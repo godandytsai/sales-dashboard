@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>業務銷售儀表板</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F4F0;--surf:#FFF;--surf2:#EEEDE8;--surf3:#E5E4DE;
+  --bd:rgba(0,0,0,0.07);--bd2:rgba(0,0,0,0.13);
+  --tx:#18180F;--tx2:#65655C;--tx3:#9A9A92;
+  --gn:#1A472A;--gn2:#2D6A4F;--gn3:#D8F3DC;
+  --am:#92400E;--am2:#FEF3C7;--rd:#991B1B;--rd2:#FEE2E2;
+  --r:10px;--rl:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-size:14px;min-height:100vh}
+
+/* Manager */
+#mgr{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+.m-logo{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:2.5rem}
+.m-h1{font-size:30px;font-weight:300;text-align:center;margin-bottom:.4rem}
+.m-h1 b{font-weight:600}
+.m-sub{font-size:13px;color:var(--tx2);text-align:center;margin-bottom:2rem}
+.m-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;width:100%;max-width:720px;margin-bottom:1.5rem}
+.m-card{background:var(--surf);border:.5px solid var(--bd2);border-radius:var(--rl);padding:1.25rem;display:flex;flex-direction:column;gap:.75rem}
+.m-card-top{display:flex;align-items:flex-start;justify-content:space-between}
+.m-lbl{font-size:13px;font-weight:600}
+.m-hint{font-size:11px;color:var(--tx3);line-height:1.5;margin-top:2px}
+.m-icon{font-size:22px}
+.m-status{display:flex;align-items:center;gap:6px}
+.m-dot{width:7px;height:7px;border-radius:50%;background:var(--surf3);flex-shrink:0}
+.m-dot.ok{background:#52B788}
+.m-stxt{font-size:11px;color:var(--tx2);font-family:'DM Mono',monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m-acts{display:flex;gap:6px;flex-wrap:wrap}
+.m-btn{font-size:11px;padding:5px 10px;border-radius:6px;border:.5px solid var(--bd2);background:var(--surf2);color:var(--tx2);cursor:pointer;font-family:inherit;transition:all .15s;position:relative;overflow:hidden}
+.m-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.m-btn:hover{border-color:var(--gn2);color:var(--gn);background:var(--gn3)}
+.m-btn.del:hover{border-color:var(--rd);color:var(--rd);background:var(--rd2)}
+.m-sum{font-size:12px;color:var(--tx2);display:flex;flex-direction:column;gap:4px}
+.m-go{background:var(--gn);color:#fff;border:none;border-radius:var(--r);padding:12px 36px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:background .15s}
+.m-go:hover{background:var(--gn2)}
+.m-go:disabled{opacity:.35;cursor:not-allowed}
+.m-note{font-size:11px;color:var(--tx3);text-align:center;margin-top:.875rem}
+.m-log{background:var(--surf2);border-radius:var(--r);padding:.625rem .875rem;font-size:11px;font-family:'DM Mono',monospace;color:var(--tx2);max-height:80px;overflow-y:auto;display:none;width:100%;max-width:720px;margin-bottom:1rem}
+
+/* Confirm dialog */
+#cdlg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center}
+#cdlg.show{display:flex}
+.cdlg-box{background:#fff;border-radius:14px;padding:1.75rem 2rem;max-width:360px;width:90%}
+.cdlg-msg{font-size:14px;color:#18180F;margin-bottom:1.5rem;line-height:1.6}
+.cdlg-btns{display:flex;gap:10px;justify-content:flex-end}
+.cdlg-cancel{font-size:13px;padding:7px 18px;border:1px solid #ccc;border-radius:8px;background:#f5f5f5;cursor:pointer;font-family:inherit}
+.cdlg-ok{font-size:13px;padding:7px 18px;border:none;border-radius:8px;background:#991B1B;color:#fff;cursor:pointer;font-family:inherit}
+
+/* App */
+#app{display:none}
+.topnav{height:52px;background:var(--surf);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:13px;font-weight:600;letter-spacing:.04em}
+.nav-meta{display:flex;align-items:center;gap:12px}
+.nav-range{font-size:11px;color:var(--tx3);font-family:'DM Mono',monospace}
+.nav-btn{font-size:12px;color:var(--tx2);background:none;border:.5px solid var(--bd2);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:inherit}
+.nav-btn:hover{background:var(--surf2)}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 52px)}
+
+/* Sidebar */
+.sidebar{background:var(--surf);border-right:1px solid var(--bd);padding:1.25rem 1rem;overflow-y:auto}
+.f-sec{margin-bottom:1.5rem}
+.f-lbl{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--tx3);margin-bottom:.6rem;display:flex;align-items:center;justify-content:space-between}
+.f-clr{font-size:10px;color:var(--gn2);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400}
+.f-clr:hover{text-decoration:underline}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:11px;padding:3px 9px;border-radius:99px;border:.5px solid var(--bd2);background:var(--surf2);color:var(--tx2);cursor:pointer;transition:all .15s;user-select:none}
+.chip:hover{border-color:var(--gn2);color:var(--gn)}
+.chip.on{background:var(--gn3);border-color:var(--gn2);color:var(--gn);font-weight:500}
+.f-div{height:1px;background:var(--bd);margin:0 0 1.5rem}
+.qsel{width:100%;font-size:12px;padding:4px 6px;border:.5px solid var(--bd2);border-radius:6px;background:var(--surf);color:var(--tx);font-family:inherit;margin-bottom:6px}
+.q-hint{font-size:10px;color:var(--tx3);margin-top:4px}
+.f-hier-indent{padding-left:.75rem;border-left:2px solid var(--gn3)}
+
+/* Main */
+.main{padding:1.5rem 1.75rem;overflow-y:auto}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--bd);margin-bottom:1.5rem}
+.tab{font-size:13px;color:var(--tx2);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;padding:7px 14px 9px;cursor:pointer;font-family:inherit;transition:color .15s}
+.tab:hover{color:var(--tx)}
+.tab.on{color:var(--gn);border-bottom-color:var(--gn);font-weight:500}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1.25rem}
+.kpi{background:var(--surf);border:.5px solid var(--bd2);border-radius:var(--r);padding:.875rem 1rem}
+.kpi-l{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-bottom:5px}
+.kpi-v{font-size:20px;font-weight:500;line-height:1;margin-bottom:4px}
+.kpi-s{font-size:11px;color:var(--tx2)}
+.kpi-s.up{color:var(--gn2)}.kpi-s.warn{color:var(--am)}.kpi-s.dn{color:var(--rd)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:var(--surf);border:.5px solid var(--bd2);border-radius:var(--rl);padding:1.125rem 1.25rem}
+.card-t{font-size:13px;font-weight:500;margin-bottom:.875rem}
+.card-t span{font-size:11px;font-weight:400;color:var(--tx3);margin-left:6px}
+.cw{position:relative;width:100%;height:210px}
+.cw-lg{position:relative;width:100%;height:270px}
+.leg{display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.leg-i{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--tx2)}
+.leg-sq{width:9px;height:9px;border-radius:2px;display:inline-block}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3);padding:5px 8px 7px 0;border-bottom:1px solid var(--bd)}
+td{padding:8px 8px 8px 0;border-bottom:.5px solid var(--bd);color:var(--tx);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.badge{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:500;white-space:nowrap}
+.badge.g{background:var(--gn3);color:var(--gn)}
+.badge.a{background:var(--am2);color:var(--am)}
+.badge.r{background:var(--rd2);color:var(--rd)}
+.pb-wrap{height:4px;background:var(--surf2);border-radius:2px;min-width:80px;margin-top:3px}
+.pb-fill{height:4px;border-radius:2px}
+.bc{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:.875rem}
+.bc-item{font-size:11px;color:var(--tx2);cursor:pointer;padding:3px 9px;border-radius:99px;border:.5px solid var(--bd2);background:var(--surf2);transition:all .15s}
+.bc-item:hover{color:var(--gn);border-color:var(--gn2)}
+.bc-item.cur{background:var(--gn3);color:var(--gn);border-color:var(--gn2);font-weight:500;cursor:default}
+.bc-sep{color:var(--tx3);font-size:11px}
+.dbtn{background:none;border:none;cursor:pointer;width:20px;height:20px;border-radius:4px;color:var(--tx3);font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.dbtn:hover{background:var(--gn3);color:var(--gn)}
+.row-s td{font-weight:500}
+.row-c td{background:var(--surf2)}
+.row-m td{color:var(--tx2);font-size:12px}
+.ind1{padding-left:1.25rem!important}
+.ind2{padding-left:2.25rem!important}.ind3{padding-left:3.25rem!important;color:var(--tx2);font-size:12px}
+.row-open>td:first-child+td{font-weight:600;color:var(--gn);}
+
+/* Loading */
+#loading{display:none;position:fixed;inset:0;background:rgba(245,244,240,.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:.875rem}
+.spin{width:28px;height:28px;border:2.5px solid var(--bd2);border-top-color:var(--gn);border-radius:50%;animation:sp .65s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loading p{font-size:12px;color:var(--tx2)}
+
+/* ── Mobile Responsive ──────────────────────────── */
+@media (max-width: 768px) {
+  /* Layout: stack sidebar on top */
+  .layout{grid-template-columns:1fr !important;}
+  .sidebar{
+    border-right:none;
+    border-bottom:1px solid var(--bd);
+    padding:.75rem;
+    max-height:none;
+    overflow-y:visible;
+  }
+  /* Sidebar filters: horizontal scroll */
+  .fc-wrap{display:flex;flex-wrap:wrap;gap:4px;}
+
+  /* Nav */
+  .topnav{padding:.5rem .75rem;flex-wrap:wrap;gap:6px;}
+  .nav-brand{font-size:14px;}
+  .nav-meta{flex-wrap:wrap;gap:6px;}
+  .nav-range{font-size:10px;}
+  .tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
+  .tab{font-size:11px;padding:6px 10px;flex-shrink:0;}
+
+  /* Main content */
+  .main{padding:.75rem;}
+
+  /* KPIs: 2 columns on mobile */
+  .kpis{grid-template-columns:1fr 1fr !important;}
+
+  /* Cards: single column */
+  .g2{grid-template-columns:1fr !important;}
+
+  /* Charts: shorter */
+  .cw-lg{height:200px !important;}
+  .cw-md{height:160px !important;}
+
+  /* Tables: horizontal scroll */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:500px;}
+
+  /* Progress bars in pe tab */
+  #pe-progress .pe-row{flex-direction:column;gap:4px;}
+
+  /* Filter chips */
+  .fc{font-size:10px;padding:3px 7px;}
+
+  /* Date inputs */
+  .qsel{font-size:12px;}
+
+  /* Sidebar toggle button (mobile only) */
+  .sidebar-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    padding:.5rem 0;
+    font-size:11px;
+    font-weight:600;
+    color:var(--tx2);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    border-bottom:1px solid var(--bd);
+    margin-bottom:.75rem;
+  }
+  .sidebar-body.collapsed{display:none;}
+}
+@media (max-width: 480px) {
+  .kpis{grid-template-columns:1fr !important;}
+  .kpi-v{font-size:1.2rem;}
+}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spin"></div><p id="lmsg">讀取中...</p></div>
+
+<!-- Confirm Dialog -->
+<div id="cdlg">
+  <div class="cdlg-box">
+    <div class="cdlg-msg" id="cdlg-msg"></div>
+    <div class="cdlg-btns">
+      <button class="cdlg-cancel" onclick="closeDlg()">取消</button>
+      <button class="cdlg-ok" id="cdlg-ok">確定清除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manager -->
+<div id="mgr" style="display:none"></div>
+
+<div id="app">
+  <nav class="topnav">
+    <div class="nav-brand">業務銷售儀表板</div>
+    <div class="nav-meta">
+      <div class="nav-range" id="nav-range"></div>
+    </div>
+  </nav>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-toggle" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        篩選條件 <span id="sb-arrow">▼</span>
+      </div>
+      <div class="sidebar-body">
+       <div class="f-sec">
+        <div class="f-lbl">區域分類 <span class="f-clr" onclick="cf('reg')">清除</span></div>
+        <div class="chips" id="fc-reg"></div>
+      </div>
+      <div id="f-ch-wrap" style="display:none">
+        <div class="f-div"></div>
+        <div class="f-sec">
+          <div class="f-lbl" style="color:var(--gn2)">↳ 客戶分類 <span class="f-clr" onclick="clearCh()">清除</span></div>
+          <div class="chips" id="fc-ch"></div>
+        </div>
+      </div>
+      <div class="f-div"></div>
+      <div class="f-sec">
+        <div class="f-lbl">業務人員 <span class="f-clr" onclick="cf('pe')">清除</span></div>
+        <div class="chips" id="fc-pe"></div>
+      </div>
+      <div class="f-div"></div>
+      <div class="f-sec">
+        <div class="f-lbl">系列 <span class="f-clr" onclick="clearHier()">清除</span></div>
+        <div class="chips" id="fc-se"></div>
+      </div>
+      <div id="f-ca-wrap" style="display:none">
+        <div class="f-div"></div>
+        <div class="f-sec">
+          <div class="f-lbl" style="color:var(--gn2)">↳ 分類 <span class="f-clr" onclick="clearCaMa()">清除</span></div>
+          <div class="chips" id="fc-ca"></div>
+        </div>
+      </div>
+      <div id="f-ma-wrap" style="display:none">
+        <div class="f-div"></div>
+        <div class="f-sec">
+          <div class="f-lbl" style="color:var(--gn2)">↳ 材質 <span class="f-clr" onclick="clearMa()">清除</span></div>
+          <div class="chips" id="fc-ma"></div>
+        </div>
+      </div>
+      <div class="f-div"></div>
+      <div class="f-sec">
+        <div class="f-lbl">日期範圍 <span class="f-clr" onclick="clearDates()">清除</span></div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:10px;color:var(--tx3);width:14px">起</span>
+            <input type="date" id="dt-from" class="qsel" style="flex:1" onchange="onDateChange()">
+          </div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:10px;color:var(--tx3);width:14px">迄</span>
+            <input type="date" id="dt-to" class="qsel" style="flex:1" onchange="onDateChange()">
+          </div>
+        </div>
+        <div class="q-hint" id="date-hint" style="margin-top:4px"></div>
+      </div>
+      <div class="f-div"></div>
+      <div class="f-sec">
+        <div class="f-lbl">目前配額範圍</div>
+        <div class="q-hint" id="q-hint" style="font-size:11px;color:var(--gn2);line-height:1.5">全通路</div>
+      </div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="tabs">
+        <button class="tab on" onclick="goTab('ov')">總覽</button>
+        <button class="tab" onclick="goTab('sr')">系列達成</button>
+        <button class="tab" onclick="goTab('pe')">業務績效</button>
+        <button class="tab" onclick="goTab('sp')">索樣紀錄</button>
+        <button class="tab" onclick="goTab('tr')">趨勢比較</button>
+        <button class="tab" onclick="goTab('ex')">老闆視圖</button>
+      </div>
+      <!-- Overview -->
+      <div id="p-ov">
+        <div class="kpis" id="kpis"></div>
+        <div class="g2">
+          <div class="card"><div class="card-t">月別銷售</div><div class="cw"><canvas id="c-mo"></canvas></div></div>
+          <div class="card"><div class="card-t">通路佔比</div><div class="cw"><canvas id="c-ch"></canvas></div></div>
+        </div>
+        <div class="g2">
+          <div class="card"><div class="card-t">系列分布</div><div class="cw"><canvas id="c-se"></canvas></div></div>
+          <div class="card"><div class="card-t">業務員排行</div><div class="cw"><canvas id="c-pe"></canvas></div></div>
+        </div>
+      </div>
+      <!-- Series -->
+      <div id="p-sr" style="display:none">
+        <div class="g2" style="margin-bottom:12px">
+          <div class="card">
+            <div class="card-t">系列達成率 <span>點長條展開分類</span></div>
+            <div class="leg"><span class="leg-i"><span class="leg-sq" style="background:#B5D4F4"></span>配額</span><span class="leg-i"><span class="leg-sq" style="background:#1D9E75"></span>實際</span></div>
+            <div class="cw-lg"><canvas id="c-sr"></canvas></div>
+          </div>
+          <div class="card" id="c-drill-card" style="display:none">
+            <div class="card-t" id="c-drill-title">分類明細</div>
+            <div class="leg"><span class="leg-i"><span class="leg-sq" style="background:#B5D4F4"></span>配額</span><span class="leg-i"><span class="leg-sq" style="background:#1D9E75"></span>實際</span></div>
+            <div class="cw-lg"><canvas id="c-drill"></canvas></div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem">
+            <div class="bc" id="bc"></div>
+            <div style="font-size:11px;color:var(--tx3)">▶ 點擊展開下一層</div>
+          </div>
+          <div class="tbl-wrap">
+            <table><thead><tr><th style="width:24px"></th><th>名稱</th><th>配額目標</th><th>實際淨額</th><th>達成率</th><th style="min-width:100px">進度</th></tr></thead>
+            <tbody id="sr-body"></tbody></table>
+          </div>
+        </div>
+      </div>
+      <!-- Person -->
+      <div id="p-pe" style="display:none">
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-t">業務達成進度</div>
+          <div id="pe-progress"></div>
+        </div>
+        <div class="g2">
+          <div class="card"><div class="card-t">業務員銷售（淨額）</div><div class="cw-lg"><canvas id="c-pe2"></canvas></div></div>
+          <div class="card"><div class="card-t">業務員明細</div><div class="tbl-wrap"><table><thead><tr><th>姓名</th><th>配額</th><th>淨銷售</th><th>達成率</th><th>月均</th></tr></thead><tbody id="pe-body"></tbody></table></div></div>
+        </div>
+      </div>
+      <!-- Samples -->
+      <div id="p-sp" style="display:none"></div>
+      <!-- Trend -->
+      <div id="p-tr" style="display:none">
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-t">月別銷售趨勢 <span>可跨年比較</span></div>
+          <div class="leg" id="tr-leg"></div>
+          <div class="cw-lg"><canvas id="c-tr"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-t">同期比較表</div>
+          <div class="tbl-wrap"><table><thead><tr id="tr-head"></tr></thead><tbody id="tr-body"></tbody></table></div>
+        </div>
+      </div>
+      <!-- Executive View -->
+      <div id="p-ex" style="display:none">
+        <div id="ex-content"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ══════════════════════════════════════════════════
+var K={sa:'sd_sales',q:'sd_quota',qm:'sd_qmeta',sm:'sd_smeta'};
+var rows=[], QUOTA={}, charts={};
+var filt={reg:new Set,ch:new Set,pe:new Set,se:new Set,ca:new Set,ma:new Set};
+var drill={series:null,cat:null,mat:null,subCat:null,subMat:null}, drillRows=[];
+
+// Chart palette
+var P={gD:'#1A472A',g:'#1D9E75',gL:'#D8F3DC',bD:'#1E3A5F',bL:'#B5D4F4',am:'#EF9F27',rd:'#E24B4A',gr:'#B4B2A9'};
+var aT={font:{size:11},color:'#9A9A92'};
+var gc='rgba(0,0,0,0.05)';
+
+// Channel mapping
+var CH_MAP={'安養院':'安養&醫材','醫院':'安養&醫材','醫院/安養院':'安養&醫材','醫療器材行':'安養&醫材','嬰兒房':'嬰藥','藥局':'嬰藥','藥局/嬰兒房':'嬰藥','機關福利社':'嬰藥'};
+// Safe encode for onclick attribute values
+function enc(v){return JSON.stringify(String(v));}
+
+function remapCh(raw){
+  var s=String(raw||'').trim();
+  if(CH_MAP[s])return CH_MAP[s];
+  if(s.indexOf('網')>=0||s.indexOf('電商')>=0)return'網路';
+  return s||'其他';
+}
+
+// ══════════════════════════════════════════════════
+// STORAGE
+// ══════════════════════════════════════════════════
+function lsGet(k){try{var r=localStorage.getItem(k);return r?JSON.parse(r):null;}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){log('⚠ 儲存失敗: '+e.message);return false;}}
+function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+
+async function loadData(){
+  showL('從雲端載入資料...');
+  // Try raw GitHub first (no rate limit), then API as fallback
+  var attempts=[
+    async function(){
+      var resp=await fetch('https://raw.githubusercontent.com/godandytsai/sales-dashboard/main/data.json?t='+Date.now(),{cache:'no-store'});
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      return await resp.json();
+    },
+    async function(){
+      var resp=await fetch('https://api.github.com/repos/godandytsai/sales-dashboard/contents/data.json',{cache:'no-store'});
+      if(!resp.ok)throw new Error('API HTTP '+resp.status);
+      var meta=await resp.json();
+      if(!meta.content)throw new Error('no content');
+      var b64=meta.content.replace(/[\n\s]/g,'');
+      var binary=atob(b64);
+      var bytes=new Uint8Array(binary.length);
+      for(var i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      return JSON.parse(new TextDecoder('utf-8').decode(bytes));
+    }
+  ];
+  for(var i=0;i<attempts.length;i++){
+    try{
+      var data=await attempts[i]();
+      if(!data)continue;
+      var fields=data.salesFields||data.F;
+      var rows=data.salesRows||data.R;
+      if(fields&&rows){
+        var map={};
+        rows.forEach(function(row){
+          var r={};
+          fields.forEach(function(f,j){r[f]=row[j];});
+          r.quotaCa=getCaGroup(r.ca||'');
+          r.maGroup=getMaGroup(r.ca||'',r.rawMa||r.ma||'');
+          r.rawCh=r.ch;
+          if(r.id)map[r.id]=r;
+        });
+        lsSet(K.sa,map);
+        lsSet(K.q,data.quota||data.q||null);
+        lsSet(K.qm,data.qmeta||data.qm||null);
+        lsSet(K.sm,data.smeta||data.sm||null);
+        return true;
+      }
+    }catch(e){console.warn('attempt',i,'failed:',e.message);}
+  }
+  return false;
+}
+
+// ══════════════════════════════════════════════════
+// FORMAT HELPERS
+// ══════════════════════════════════════════════════
+function fM(v){
+  if(!v&&v!==0)return'0';
+  var abs=Math.abs(v);
+  if(abs>=1e6)return(v/1e6).toFixed(2)+'M';
+  if(abs>=1e3)return(v/1e3).toFixed(1)+'K';
+  return Math.round(v).toLocaleString();
+}
+function mkC(id,cfg){if(charts[id])charts[id].destroy();var el=document.getElementById(id);if(el)charts[id]=new Chart(el,cfg);}
+function grp(d,k){return d.reduce(function(a,r){a[r[k]]=(a[r[k]]||0)+r.amt;return a;},{});}
+function qSum(obj,mos){return mos.reduce(function(s,m){return s+(obj[m]||0);},0);}
+function aMos(d){var m=[...new Set(d.map(function(r){return String(r.mo);}))];return m.length?m:['1','2','3'];}
+function aBadge(q,a){
+  if(!q)return'<span style="color:var(--tx3)">—</span>';
+  var p=Math.round(a/q*100),c=p>=100?'g':p>=80?'a':'r';
+  return'<span class="badge '+c+'">'+p+'%</span>';
+}
+function pbH(q,a){
+  var p=q>0?Math.min(Math.round(a/q*100),100):0,c=p>=100?P.g:p>=80?P.am:P.rd;
+  return'<div class="pb-wrap"><div class="pb-fill" style="width:'+p+'%;background:'+c+'"></div></div>';
+}
+
+// ══════════════════════════════════════════════════
+// MATERIAL GROUP MAPPING (sales ca+ma → quota ma key)
+// ══════════════════════════════════════════════════
+// CATEGORY REMAP: sales ca → quota ca (for matching quota structure)
+var CA_REMAP={
+  '幫寶適':'平行輸入&其他','大王':'平行輸入&其他','滿意寶寶':'平行輸入&其他',
+  'P&G':'P&G+花王+暖暖包','小白兔暖暖包':'P&G+花王+暖暖包',
+  '五月花':'五月花+得意+橘子工坊','得意':'五月花+得意+橘子工坊','橘子工坊':'五月花+得意+橘子工坊',
+  '生活用品/五金':'其他','醫療器材':'其他'
+};
+function getCaGroup(ca){return CA_REMAP[ca]||ca;}
+
+var MA_GROUP={
+  '包寧安|尿片':'成褲','包寧安|褲型':'成褲','包寧安|黏貼型':'成褲','包寧安|看護墊':'成褲',
+  '嬰舒寶|褲型':'嬰褲',
+  '櫻桃小丸子|褲型':'嬰褲','櫻桃小丸子|黏貼型':'嬰褲','櫻桃小丸子|禮箱':'嬰褲',
+  '胖虎|礦砂貓砂':'貓砂','胖虎|豆腐貓砂':'貓砂',
+  '幫寶適|褲型':'他牌嬰褲&他牌濕巾','幫寶適|黏貼型':'他牌嬰褲&他牌濕巾',
+  '滿意寶寶|褲型':'他牌嬰褲&他牌濕巾',
+  '大王|褲型':'他牌嬰褲&他牌濕巾','大王|黏貼型':'他牌嬰褲&他牌濕巾',
+  '小白兔暖暖包|手握':'清潔用品','小白兔暖暖包|貼式':'清潔用品',
+  'P&G|清潔用品':'清潔用品',
+  '得意|清潔用品':'清潔用品','得意|衛生紙':'清潔用品','得意|贈品':'清潔用品',
+  '橘子工坊|清潔用品':'清潔用品',
+  '五月花|衛生紙':'清潔用品',
+  '生活用品/五金|個人潔淨保養':'其他','生活用品/五金|消耗品':'其他',
+  '生活用品/五金|清潔用品':'其他','生活用品/五金|衛生紙':'其他','生活用品/五金|食品/飲品':'其他',
+  '醫療器材|個人潔淨保養':'其他','醫療器材|清潔用品':'其他','醫療器材|醫療器材':'其他'
+};
+function getMaGroup(ca,ma){return MA_GROUP[ca+'|'+ma]||ma;}
+
+// ══════════════════════════════════════════════════
+// PARSE
+// ══════════════════════════════════════════════════
+function parseRoc(v){
+  var p=String(v).trim().split('/');
+  if(p.length===3){var y=parseInt(p[0])+1911;return{y:y,mo:parseInt(p[1]),day:parseInt(p[2])};}
+  return null;
+}
+
+function parseQuotaWS(ws){
+  var raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+  var hi=-1;
+  for(var i=0;i<Math.min(raw.length,5);i++){if(raw[i]&&raw[i].indexOf('系列')>=0){hi=i;break;}}
+  if(hi<0){log('⚠ 找不到配額標題列');return null;}
+  var hdr=raw[hi];
+  var iPe=hdr.indexOf('業務負責人');
+  var iReg=hdr.indexOf('區域分類');
+  var iUpdCh=hdr.indexOf('更新_客戶分類');
+  var iMat=hdr.indexOf('材質');
+  var iCat=hdr.indexOf('分類');
+  var iSe=hdr.indexOf('系列');
+  var mCols=[];
+  hdr.forEach(function(v,ci){var n=parseFloat(v);if(n>=11501&&n<=11512)mCols.push({ci:ci,mo:String(Math.round(n)%100)});});
+  log('配額欄位 pe='+iPe+' reg='+iReg+' updCh='+iUpdCh+' se='+iSe+' mCols='+mCols.length);
+
+  // QUOTA[person][region][updCh] = { qh, qf, qtotal }
+  // person='全通路' for global; updCh='' means whole region
+  var OUT={};
+  var curPe='';
+
+  function getOrCreate(pe,reg,ch){
+    if(!OUT[pe])OUT[pe]={};
+    if(!OUT[pe][reg])OUT[pe][reg]={};
+    if(!OUT[pe][reg][ch])OUT[pe][reg][ch]={qh:{},qf:{},qtotal:{}};
+    return OUT[pe][reg][ch];
+  }
+  function addDetail(pe,reg,ch,se,ca,ma,monthly){
+    var o=getOrCreate(pe,reg,ch);
+    if(!o.qh[se])o.qh[se]={};
+    if(!o.qh[se][ca])o.qh[se][ca]={mo:{},mats:{}};
+    mCols.forEach(function(mc){
+      o.qh[se][ca].mo[mc.mo]=(o.qh[se][ca].mo[mc.mo]||0)+monthly[mc.mo];
+      if(!o.qf[se])o.qf[se]={};
+      o.qf[se][mc.mo]=(o.qf[se][mc.mo]||0)+monthly[mc.mo];
+    });
+    if(ma&&!/^(total|TOTAL|Total)$/i.test(ma)){
+      if(!o.qh[se][ca].mats[ma])o.qh[se][ca].mats[ma]={};
+      mCols.forEach(function(mc){o.qh[se][ca].mats[ma][mc.mo]=(o.qh[se][ca].mats[ma][mc.mo]||0)+monthly[mc.mo];});
+    }
+  }
+
+  for(var ri=hi+1;ri<raw.length;ri++){
+    var row=raw[ri];if(!row)continue;
+    if(row[iPe]&&String(row[iPe]).trim())curPe=String(row[iPe]).trim();
+    var reg=row[iReg]?String(row[iReg]).trim():'';
+    var updCh=row[iUpdCh]?String(row[iUpdCh]).trim():'';
+    var se=row[iSe]?String(row[iSe]).trim():'';
+    var ca=row[iCat]?String(row[iCat]).trim():'';
+    var ma=row[iMat]?String(row[iMat]).trim():'';
+    var monthly={};
+    mCols.forEach(function(mc){monthly[mc.mo]=parseFloat(row[mc.ci])||0;});
+    var isTot=/^(total|TOTAL|Total)$/i.test(se)||/^(total|TOTAL|Total)$/i.test(ca);
+
+    if(reg==='全通路'){
+      if(isTot)continue;
+      addDetail('全通路','_','',se,ca,ma,monthly);
+    } else if(curPe){
+      if(isTot){
+        var o=getOrCreate(curPe,reg,updCh);
+        mCols.forEach(function(mc){o.qtotal[mc.mo]=(o.qtotal[mc.mo]||0)+monthly[mc.mo];});
+      } else {
+        if(!se||!ca)continue;
+        addDetail(curPe,reg,updCh,se,ca,ma,monthly);
+      }
+    }
+  }
+  // Build 全區 aggregates: for each person, sum all regions into a '_ALL' key
+  Object.keys(OUT).filter(function(pe){return pe!=='全通路';}).forEach(function(pe){
+    OUT[pe]['_ALL']={};
+    Object.keys(OUT[pe]).forEach(function(reg){
+      if(reg==='_ALL')return;
+      Object.keys(OUT[pe][reg]).forEach(function(ch){
+        if(!OUT[pe]['_ALL'][ch])OUT[pe]['_ALL'][ch]={qh:{},qf:{},qtotal:{}};
+        var src=OUT[pe][reg][ch], dst=OUT[pe]['_ALL'][ch];
+        // merge qtotal
+        Object.keys(src.qtotal).forEach(function(m){dst.qtotal[m]=(dst.qtotal[m]||0)+src.qtotal[m];});
+        // merge qf
+        Object.keys(src.qf).forEach(function(se){
+          if(!dst.qf[se])dst.qf[se]={};
+          Object.keys(src.qf[se]).forEach(function(m){dst.qf[se][m]=(dst.qf[se][m]||0)+src.qf[se][m];});
+        });
+        // merge qh
+        Object.keys(src.qh).forEach(function(se){
+          if(!dst.qh[se])dst.qh[se]={};
+          Object.keys(src.qh[se]).forEach(function(ca){
+            if(!dst.qh[se][ca])dst.qh[se][ca]={mo:{},mats:{}};
+            Object.keys(src.qh[se][ca].mo||{}).forEach(function(m){
+              dst.qh[se][ca].mo[m]=(dst.qh[se][ca].mo[m]||0)+src.qh[se][ca].mo[m];
+            });
+          });
+        });
+      });
+    });
+  });
+  // ── Detect and remove summary rows ──────────────────
+  // A ch='' row is a summary if its total ≈ sum of ch!='' rows of same pe (intra-pe)
+  // OR ≈ sum of one ch='' row per other pe (cross-pe, e.g. 網路全區)
+  var EPS=0.002;
+  var allPeKeys=Object.keys(OUT).filter(function(k){return k!=='全通路';});
+
+  function rowQTotal(o){return Object.values(o.qtotal||{}).reduce(function(s,v){return s+v;},0);}
+
+  // Collect all ch='' rows per pe for cross-pe check
+  var peCHEmptyRows={};
+  allPeKeys.forEach(function(pe){
+    peCHEmptyRows[pe]=[];
+    Object.keys(OUT[pe]).forEach(function(reg){
+      if(reg==='_ALL')return;
+      if(OUT[pe][reg]['']){
+        var t=rowQTotal(OUT[pe][reg]['']);
+        if(t>0)peCHEmptyRows[pe].push({reg:reg,q:t,qtotal:OUT[pe][reg][''].qtotal||{}});
+      }
+    });
+  });
+
+  allPeKeys.forEach(function(pe){
+    Object.keys(OUT[pe]).forEach(function(reg){
+      if(reg==='_ALL')return;
+      if(!OUT[pe][reg][''])return; // only check ch='' rows
+      var q=rowQTotal(OUT[pe][reg]['']);
+      if(q===0){delete OUT[pe][reg][''];return;}
+      var skip=false;
+
+      // Rule 1: intra-pe – ≈ sum of ch!='' rows of same pe
+      var sameChTotal=0;
+      Object.keys(OUT[pe]).forEach(function(reg2){
+        if(reg2==='_ALL')return;
+        Object.keys(OUT[pe][reg2]).forEach(function(ch2){
+          if(ch2!=='')sameChTotal+=rowQTotal(OUT[pe][reg2][ch2]);
+        });
+      });
+      if(sameChTotal>0&&Math.abs(q-sameChTotal)/Math.max(q,1)<EPS){skip=true;log('彙總(intra):'+pe+'/'+reg);}
+
+      // Rule 1b: intra-pe – ≈ sum of ch!='' rows sharing same reg prefix (3 chars)
+      if(!skip){
+        var prefix=reg.substring(0,3);
+        var relatedTotal=0,relatedCount=0;
+        Object.keys(OUT[pe]).forEach(function(reg2){
+          if(reg2==='_ALL')return;
+          Object.keys(OUT[pe][reg2]).forEach(function(ch2){
+            if(ch2!==''&&reg2.substring(0,3)===prefix){relatedTotal+=rowQTotal(OUT[pe][reg2][ch2]);relatedCount++;}
+          });
+        });
+        if(relatedCount>0&&relatedTotal>0&&Math.abs(q-relatedTotal)/Math.max(q,1)<EPS){skip=true;log('彙總(intra-reg):'+pe+'/'+reg);}
+      }
+
+      // Rule 2: cross-pe – month-by-month check (all 12 months must match)
+      // This prevents false positives from coincidental annual total matches
+      if(!skip){
+        var otherPes=allPeKeys.filter(function(p){return p!==pe;});
+        var otherRows=[];
+        otherPes.forEach(function(p){peCHEmptyRows[p].forEach(function(r){otherRows.push({pe:p,reg:r.reg,qtotal:r.qtotal,pe:p});});});
+        var thisQtotal=OUT[pe][reg][''].qtotal||{};
+        var allMos=Object.keys(thisQtotal);
+        function tryCombosMonthly(rows, idx, usedPes, moSums){
+          // Check if current moSums matches thisQtotal for all months
+          var matches=allMos.every(function(m){
+            var diff=Math.abs((thisQtotal[m]||0)-(moSums[m]||0));
+            return diff<1||(thisQtotal[m]>0&&diff/thisQtotal[m]<EPS);
+          });
+          if(matches&&Object.keys(moSums).length>0)return true;
+          if(idx>=rows.length)return false;
+          var r=rows[idx];
+          if(r['pe']!==pe&&usedPes.indexOf(r['pe'])<0){
+            var newSums={};
+            allMos.forEach(function(m){newSums[m]=(moSums[m]||0)+(r.qtotal[m]||0);});
+            if(tryCombosMonthly(rows,idx+1,usedPes.concat([r['pe']]),newSums))return true;
+          }
+          return tryCombosMonthly(rows,idx+1,usedPes,moSums);
+        }
+        if(tryCombosMonthly(otherRows,0,[],{})){skip=true;log('彙總(cross-pe):'+pe+'/'+reg);}
+      }
+
+      if(skip){
+        delete OUT[pe][reg][''];
+        if(Object.keys(OUT[pe][reg]).length===0)delete OUT[pe][reg];
+      }
+    });
+  });
+
+  log('配額解析完成 people='+allPeKeys.join(','));
+  return OUT;
+}
+
+function parseSalesWS(ws){
+  var data=XLSX.utils.sheet_to_json(ws,{defval:null,raw:false});
+  var seenCtr={};
+  var CH_REMAP={
+    '嬰兒房':'嬰藥','藥局':'嬰藥','藥局/嬰兒房':'嬰藥','機關福利社':'嬰藥',
+    '安養院':'安養&醫材','醫院':'安養&醫材','醫院/安養院':'安養&醫材','醫療器材行':'安養&醫材',
+    '盤商':'盤商(經銷商)','經銷商':'盤商(經銷商)'
+  };
+  // MA_GROUP is now a global constant
+  return data.map(function(r){
+    var d=parseRoc(r['日期']); if(!d||!r['單別'])return null;
+    var t=String(r['單別']||'').trim();
+    var orderNo=String(r['出貨單號']||'').trim();
+    var seq;
+    if(r['序號']!==null&&r['序號']!==undefined&&r['序號']!==''){
+      seq=String(Math.round(parseFloat(r['序號'])||0));
+    } else {
+      var ck=t+'_'+orderNo;
+      seenCtr[ck]=(seenCtr[ck]||0)+1;
+      seq=String(seenCtr[ck]);
+    }
+    var rawCh=String(r['客戶分類']||'').trim();
+    var rawReg=String(r['區域分類']||'').trim();
+    var updCh=CH_REMAP[rawCh]||(rawCh.indexOf('網')>=0||rawCh.indexOf('電商')>=0?'網路':rawCh);
+    // 區域負責人重對應：某些業務員開單但實際業績歸屬不同人
+    var PE_REG_MAP={'網路通路-1區':'雅蘋','網路通路-2區':'張蓒'};
+    var rawPe=String(r['業務姓名']||'').trim();
+    var pe=PE_REG_MAP[rawReg]||rawPe;
+    var rawCa=String(r['分類']||'').trim();
+    var rawMa=String(r['材質']||'').trim();
+    // 材質歸類：對應配額表的合併材質名稱
+    var MA_REMAP={
+      '包寧安': {'尿片':'成褲','褲型':'成褲','黏貼型':'成褲','看護墊':'成褲'},
+      '嬰舒寶': {'褲型':'嬰褲'},
+      '櫻桃小丸子': {'褲型':'嬰褲','黏貼型':'嬰褲','禮箱':'嬰褲'},
+      '胖虎': {'礦砂貓砂':'貓砂','豆腐貓砂':'貓砂'},
+      '幫寶適': {'褲型':'他牌嬰褲&他牌濕巾','黏貼型':'他牌嬰褲&他牌濕巾'},
+      '大王':   {'褲型':'他牌嬰褲&他牌濕巾','黏貼型':'他牌嬰褲&他牌濕巾'},
+      '滿意寶寶': {'褲型':'他牌嬰褲&他牌濕巾'},
+      '小白兔暖暖包': {'手握':'清潔用品','貼式':'清潔用品'},
+      'P&G': {'清潔用品':'清潔用品'},
+      '得意': {'清潔用品':'清潔用品','衛生紙':'清潔用品','贈品':'清潔用品'},
+      '橘子工坊': {'清潔用品':'清潔用品'},
+      '五月花': {'衛生紙':'清潔用品'},
+      '生活用品/五金': {'個人潔淨保養':'其他','消耗品':'其他','清潔用品':'其他','衛生紙':'其他','食品/飲品':'其他'},
+      '醫療器材': {'個人潔淨保養':'其他','清潔用品':'其他','醫療器材':'其他'}
+    };
+    var ma=(MA_REMAP[rawCa]&&MA_REMAP[rawCa][rawMa])||rawMa;
+    return{
+      id:t+'_'+orderNo+'_'+seq,
+      t:t, y:d.y, mo:d.mo, day:d.day,
+      pe:pe,
+      amt:parseFloat(String(r['未稅金額']||'0').replace(/,/g,''))||0,
+      se:String(r['系列']||'').trim(),
+      ca:rawCa,
+      quotaCa:getCaGroup(rawCa),
+      ma:ma,
+      rawMa:rawMa,
+      ch:updCh,
+      rawCh:rawCh,
+      reg:rawReg,
+      maGroup:getMaGroup(String(r['分類']||'').trim(),String(r['材質']||'').trim()),
+      qty:parseFloat(String(r['數量']||'0').replace(/,/g,''))||0
+    };
+  }).filter(Boolean);
+}
+
+
+// ══════════════════════════════════════════════════
+// MANAGER UI
+// ══════════════════════════════════════════════════
+function log(msg){var el=document.getElementById('m-log');if(el){el.style.display='block';el.textContent=(el.textContent?el.textContent+'\n':'')+msg;el.scrollTop=el.scrollHeight;}else{console.log(msg);}}
+
+function updateMgrUI(){
+  var qm=lsGet(K.qm),sm=lsGet(K.sm),map=lsGet(K.sa)||{};
+  var sc=Object.keys(map).length;
+  document.getElementById('dot-q').className='m-dot'+(qm?' ok':'');
+  document.getElementById('st-q').textContent=qm?qm.file+' · '+qm.date:'尚未上傳';
+  document.getElementById('dot-s').className='m-dot'+(sc>0?' ok':'');
+  document.getElementById('st-s').textContent=sc>0?sc.toLocaleString()+' 筆':'尚未上傳';
+  var sum=document.getElementById('m-sum');
+  if(!qm&&sc===0){sum.innerHTML='<div style="color:var(--tx3)">尚無資料</div>';}
+  else{
+    var years={};
+    Object.values(map).forEach(function(r){if(r.y)years[r.y]=(years[r.y]||0)+1;});
+    var ystr=Object.entries(years).sort().map(function(e){return e[0]+'年 '+e[1].toLocaleString()+'筆';}).join('<br>');
+    sum.innerHTML=(qm?'<div>✅ 配額：'+qm.file+'</div>':'<div style="color:var(--am)">⚠ 尚無配額</div>')+(sc?'<div>📊 銷售：<br>'+ystr+'</div>':'');
+  }
+  document.getElementById('go-btn').disabled=sc===0;
+}
+
+// Confirm dialog
+function showDlg(msg,onOk){
+  document.getElementById('cdlg-msg').textContent=msg;
+  document.getElementById('cdlg').classList.add('show');
+  document.getElementById('cdlg-ok').onclick=function(){closeDlg();onOk();};
+}
+function closeDlg(){document.getElementById('cdlg').classList.remove('show');}
+
+function clrQuota(){showDlg('確定清除配額資料？',function(){lsDel(K.q);lsDel(K.qm);log('✓ 配額已清除');updateMgrUI();});}
+function clrSales(){showDlg('確定清除所有銷售資料？',function(){lsDel(K.sa);lsDel(K.sm);log('✓ 銷售資料已清除');updateMgrUI();});}
+function clrAll(){showDlg('確定清除全部資料（配額＋銷售）？此動作無法還原。',function(){Object.values(K).forEach(lsDel);log('✓ 全部資料已清除');updateMgrUI();});}
+
+async function upQuota(inp){
+  var file=inp.files[0];if(!file)return;
+  showL('讀取配額...');
+  var result=await new Promise(function(res){
+    var fr=new FileReader();
+    fr.onload=function(e){
+      var wb=XLSX.read(e.target.result,{type:'binary',raw:true});
+      var qn=wb.SheetNames.find(function(n){return n==='Y2026配額'||n==='2026配額';})
+        ||wb.SheetNames.find(function(n){return /^Y?\d{4}配額$/.test(n);})
+        ||wb.SheetNames.find(function(n){return n.includes('配額')&&!n.includes('暫掛')&&!n.includes('原始')&&!n.includes('對應')&&!n.includes('參照');});
+      log('配額工作表: '+qn);
+      if(!qn){log('⚠ 找不到配額工作表');res(null);return;}
+      res(parseQuotaWS(wb.Sheets[qn]));
+    };
+    fr.readAsBinaryString(file);
+  });
+  hideL();
+  if(result){
+    lsSet(K.q,result);
+    lsSet(K.qm,{file:file.name,date:new Date().toLocaleDateString('zh-TW')});
+    log('✅ 配額儲存完成');
+  }
+  updateMgrUI();inp.value='';
+}
+
+async function upSales(inp){
+  var files=Array.from(inp.files);if(!files.length)return;
+  var map=lsGet(K.sa)||{},meta=lsGet(K.sm)||{};
+  for(var fi=0;fi<files.length;fi++){
+    var file=files[fi];
+    showL('讀取 '+file.name+' ...');
+    var parsed=await new Promise(function(res){
+      var f=file,fr=new FileReader();
+      fr.onload=function(e){
+        var wb=XLSX.read(e.target.result,{type:'binary',raw:false});
+        var sn=wb.SheetNames.find(function(n){return n.includes('銷售')||n==='銷售';});
+        log('銷售工作表: '+sn);
+        if(!sn){log('⚠ 找不到銷售工作表');res([]);return;}
+        res(parseSalesWS(wb.Sheets[sn]));
+      };
+      fr.readAsBinaryString(f);
+    });
+    var fn=0,fu=0;
+    parsed.forEach(function(r){if(map[r.id])fu++;else fn++;map[r.id]=r;});
+    meta[file.name]={rows:parsed.length,date:new Date().toLocaleDateString('zh-TW')};
+    log('✅ '+file.name+': 新增'+fn+'筆，更新'+fu+'筆');
+  }
+  lsSet(K.sa,map);lsSet(K.sm,meta);
+  hideL();
+  log('📊 合計 '+Object.keys(map).length.toLocaleString()+' 筆');
+  updateMgrUI();inp.value='';
+  // If dashboard is already open, reload data so changes take effect immediately
+  if(document.getElementById('app').style.display!=='none'){
+    rows=Object.values(lsGet(K.sa)||{});
+    buildFilters(rows.filter(function(r){return r.t==='出貨';}));
+    renderAll();
+    log('✅ 儀表板資料已同步更新');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════
+function openDash(){
+  showL('載入資料...');
+  rows=Object.values(lsGet(K.sa)||{});
+  QUOTA=lsGet(K.q)||{};
+  // Validate quota structure - new format is QUOTA[pe][reg][ch]
+  // If old format detected (QUOTA[pe][reg] has qh/qf directly), clear it
+  var quotaValid=true;
+  Object.keys(QUOTA).forEach(function(pe){
+    if(pe==='全通路')return;
+    Object.keys(QUOTA[pe]||{}).forEach(function(reg){
+      if(reg==='_ALL')return;
+      var val=QUOTA[pe][reg];
+      // Old format: val has qh/qf/qtotal directly
+      if(val&&(val.qh!==undefined||val.qf!==undefined)){
+        quotaValid=false;
+      }
+    });
+  });
+  if(!quotaValid){
+    log('⚠ 偵測到舊版配額格式，請重新上傳配額檔案');
+    QUOTA={};
+  }
+  log('載入 '+rows.length+' 筆');
+  log('配額: '+Object.keys(QUOTA).join(', '));
+
+  var sales=rows.filter(function(r){return r.t==='出貨';});
+  var ymos=sales.map(function(r){return r.y*100+r.mo;}).sort();
+  if(ymos.length){
+    var fmt=function(n){return Math.floor(n/100)+'/'+(n%100<10?'0':'')+(n%100);};
+    document.getElementById('nav-range').textContent=fmt(ymos[0])+' ~ '+fmt(ymos[ymos.length-1]);
+  }
+  document.getElementById('mgr').style.display='none';
+  document.getElementById('app').style.display='block';
+  buildFilters(sales);
+  buildQSelectors();
+  // Default: current month
+  var now=new Date();
+  var cy=now.getFullYear(), cm=now.getMonth()+1;
+  var pad=function(n){return n<10?'0'+n:String(n);};
+  var monthFrom=cy+'-'+pad(cm)+'-01';
+  var today=now.getDate();
+  var monthTo=cy+'-'+pad(cm)+'-'+pad(today);  // 今天，不是月底
+  // Set date picker values
+  var dtFrom=document.getElementById('dt-from');
+  var dtTo=document.getElementById('dt-to');
+  if(dtFrom&&dtTo){
+    dtFrom.value=monthFrom;
+    dtTo.value=monthTo;
+    dateFrom=parseInt(monthFrom.replace(/-/g,''));
+    dateTo=parseInt(monthTo.replace(/-/g,''));
+    document.getElementById('date-hint').textContent=monthFrom+' ～ '+monthTo;
+  }
+  // Nav range: show data range
+  var allDates=rows.filter(function(r){return r.t==='出貨';}).map(function(r){return r.y*10000+r.mo*100+(r.day||1);});
+  if(allDates.length){
+    var minD=Math.min.apply(null,allDates),maxD=Math.max.apply(null,allDates);
+    var fmt=function(n){var y=Math.floor(n/10000),m=Math.floor((n%10000)/100),d=n%100;return y+'-'+(m<10?'0':'')+m+'-'+(d<10?'0':'')+d;};
+    document.getElementById('nav-range').textContent=fmt(minD)+' ～ '+fmt(maxD);
+  }
+  hideL();
+  renderAll();
+}
+function goMgr(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('mgr').style.display='flex';
+  updateMgrUI();
+}
+
+// ── Quota calculation based on active filters ──
+function getCurQ(){
+  var base=getBaseQ();
+  var qh=base.qh||{};
+  var activeSe=filt.se.size?[...filt.se]:null;
+  var activeCa=filt.ca.size?[...filt.ca]:null;
+  var activeMa=filt.ma.size?[...filt.ma]:null;
+  if(!activeSe&&!activeCa&&!activeMa)return base;
+
+  var filtQH={};
+  Object.keys(qh).forEach(function(se){
+    if(activeSe&&activeSe.indexOf(se)<0)return;
+    filtQH[se]={};
+    Object.keys(qh[se]).forEach(function(ca){
+      if(activeCa&&activeCa.indexOf(ca)<0)return;
+      filtQH[se][ca]={mo:{},mats:{}};
+      var catObj=qh[se][ca];
+      if(activeMa){
+        var matTotal={},hasMatQ=false;
+        activeMa.forEach(function(ma){
+          if(catObj.mats&&catObj.mats[ma]){
+            hasMatQ=true;
+            Object.keys(catObj.mats[ma]).forEach(function(m){
+              matTotal[m]=(matTotal[m]||0)+catObj.mats[ma][m];
+            });
+          }
+        });
+        filtQH[se][ca].mo=hasMatQ?matTotal:catObj.mo;
+      } else {
+        filtQH[se][ca].mo=catObj.mo;
+        filtQH[se][ca].mats=catObj.mats;
+      }
+    });
+    if(!Object.keys(filtQH[se]).length)delete filtQH[se];
+  });
+  var filtQF={};
+  Object.keys(filtQH).forEach(function(se){
+    filtQF[se]={};
+    Object.values(filtQH[se]).forEach(function(catObj){
+      Object.keys(catObj.mo||{}).forEach(function(m){filtQF[se][m]=(filtQF[se][m]||0)+(catObj.mo[m]||0);});
+    });
+  });
+  return{qh:filtQH,qf:filtQF,qtotal:base.qtotal||{}};
+}
+
+// Determine base quota from filter state: pe > reg > ch > 全通路
+function getBaseQ(){
+  var activePe=filt.pe.size>0?[...filt.pe]:null;
+  var activeReg=filt.reg.size>0?[...filt.reg]:null;
+  var activeCh=filt.ch.size>0?[...filt.ch]:null;
+
+
+  // No filters at all -> use 全通路 only
+  if(!activePe&&!activeReg&&!activeCh){
+    updateQuotaHint(null,null,null);
+    var g=QUOTA['全通路']&&QUOTA['全通路']['_']&&QUOTA['全通路']['_'][''];
+    return g||{qh:{},qf:{},qtotal:{}};
+  }
+
+  var merged={qh:{},qf:{},qtotal:{}};
+
+  Object.keys(QUOTA).forEach(function(pe){
+    if(pe==='全通路')return;
+    if(activePe&&activePe.indexOf(pe)<0)return;
+    if(!activeReg){
+      // Summary rows already removed in parseQuotaWS - just sum all remaining rows
+      Object.keys(QUOTA[pe]).forEach(function(reg){
+        if(reg==='_ALL')return;
+        mergeRegWithChFilter(QUOTA[pe][reg],activeCh,merged);
+      });
+    } else {
+      // Region filter active: use only selected regions
+      Object.keys(QUOTA[pe]).forEach(function(reg){
+        if(reg==='_ALL')return;
+        if(activeReg.indexOf(reg)<0)return;
+        mergeRegWithChFilter(QUOTA[pe][reg],activeCh,merged);
+      });
+    }
+  });
+
+  updateQuotaHint(activePe,activeReg,activeCh);
+  return merged;
+}
+
+// Merge a region's quota entries respecting ch filter
+// If region has ch-specific entries (嬰藥/安養) and activeCh is set → only include matching ch
+// If region has ONLY ch='' (no breakdown) → include regardless of activeCh
+function mergeRegWithChFilter(regObj,activeCh,merged){
+  if(!activeCh){
+    // No ch filter: include everything
+    Object.values(regObj).forEach(function(o){mergeQ(merged,o);});
+    return;
+  }
+  var hasChRows=Object.keys(regObj).some(function(ch){return ch!=='';});
+  if(hasChRows){
+    // Has ch breakdown: only include matching ch rows (skip ch='')
+    Object.keys(regObj).forEach(function(ch){
+      if(ch!==''&&activeCh.indexOf(ch)>=0)mergeQ(merged,regObj[ch]);
+    });
+  } else {
+    // No ch breakdown (ch='' only): include it (can't filter further)
+    if(regObj[''])mergeQ(merged,regObj['']);
+  }
+}
+
+function mergeQ(dst,src){
+  // merge qtotal
+  Object.keys(src.qtotal||{}).forEach(function(m){dst.qtotal[m]=(dst.qtotal[m]||0)+src.qtotal[m];});
+  // merge qf
+  Object.keys(src.qf||{}).forEach(function(se){
+    if(!dst.qf[se])dst.qf[se]={};
+    Object.keys(src.qf[se]).forEach(function(m){dst.qf[se][m]=(dst.qf[se][m]||0)+src.qf[se][m];});
+  });
+  // merge qh
+  Object.keys(src.qh||{}).forEach(function(se){
+    if(!dst.qh[se])dst.qh[se]={};
+    Object.keys(src.qh[se]).forEach(function(ca){
+      if(!dst.qh[se][ca])dst.qh[se][ca]={mo:{},mats:{}};
+      Object.keys(src.qh[se][ca].mo||{}).forEach(function(m){
+        dst.qh[se][ca].mo[m]=(dst.qh[se][ca].mo[m]||0)+src.qh[se][ca].mo[m];
+      });
+    });
+  });
+}
+
+function updateQuotaHint(pe,regs,chs){
+  var el=document.getElementById('q-hint');
+  if(!el)return;
+  var parts=[];
+  if(pe)parts.push(pe);
+  if(regs&&regs.length)parts.push(regs.join('+'));
+  if(chs&&chs.length)parts.push(chs.join('+'));
+  el.textContent=parts.length?parts.join(' / '):'全通路';
+}
+
+// Remove old selectors - now driven purely by filter chips
+function buildQSelectors(){}
+function onPeChange(){}
+function onReChange(){}
+function syncQuotaToPe(){
+  // When person filter changes, quota auto-computes from getBaseQ
+  updateQuotaHint(filt.pe.size===1?[...filt.pe][0]:null,
+    filt.reg.size?[...filt.reg]:null,
+    filt.ch.size?[...filt.ch]:null);
+}
+
+
+// ── Filters ──────────────────────────────────────
+var hierMap={};
+
+// region > ch hierarchy map
+var regChMap = {};  // { reg: Set(ch) }
+
+function buildFilters(sales){
+  var u=function(arr){return[...new Set(arr.filter(Boolean))].sort();};
+  hierMap={};  regChMap={};
+  sales.forEach(function(r){
+    // Series hierarchy
+    if(r.se){
+      if(!hierMap[r.se])hierMap[r.se]={};
+      if(!hierMap[r.se][r.ca])hierMap[r.se][r.ca]=new Set();
+      if(r.ma)hierMap[r.se][r.ca].add(r.ma);
+    }
+    // Region > ch hierarchy
+    if(r.reg){
+      if(!regChMap[r.reg])regChMap[r.reg]=new Set();
+      if(r.ch)regChMap[r.reg].add(r.ch);
+    }
+  });
+  mkChips('fc-reg',u(sales.map(function(r){return r.reg;})),'reg');
+  mkChips('fc-pe',u(sales.filter(function(r){return r.pe&&r.pe!=='總公司';}).map(function(r){return r.pe;})),'pe');
+  mkChips('fc-se',Object.keys(hierMap).sort(),'se');
+  document.getElementById('f-ch-wrap').style.display='none';
+  document.getElementById('f-ca-wrap').style.display='none';
+  document.getElementById('f-ma-wrap').style.display='none';
+}
+function mkChips(id,vals,key){
+  document.getElementById(id).innerHTML=vals.map(function(v){
+    var onclick;
+    if(key==='se')      onclick="togSe("+enc(v)+",this)";
+    else if(key==='ca') onclick="togCa("+enc(v)+",this)";
+    else if(key==='ma') onclick="togMa("+enc(v)+",this)";
+    else                onclick="tog("+enc(key)+","+enc(v)+",this)";
+    return"<div class='chip' onclick='"+onclick+"'>"+v+"</div>";
+  }).join('');
+}
+function tog(key,val,el){
+  if(filt[key].has(val)){filt[key].delete(val);el.classList.remove('on');}
+  else{filt[key].add(val);el.classList.add('on');}
+  if(key==='reg') rebuildChChips();
+  if(key==='pe')  syncQuotaToPe();
+  renderAll();
+}
+function rebuildChChips(){
+  var wrap=document.getElementById('f-ch-wrap');
+  if(filt.reg.size===0){wrap.style.display='none';filt.ch.clear();return;}
+  var chs=new Set();
+  filt.reg.forEach(function(reg){if(regChMap[reg])regChMap[reg].forEach(function(c){chs.add(c);});});
+  var sorted=[...chs].filter(Boolean).sort();
+  if(!sorted.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  var validCh=new Set(sorted);
+  filt.ch.forEach(function(c){if(!validCh.has(c))filt.ch.delete(c);});
+  document.getElementById('fc-ch').innerHTML=sorted.map(function(v){
+    var on=filt.ch.has(v)?' on':'';
+    return"<div class='chip"+on+"' onclick='togCh("+enc(v)+",this)'>"+v+"</div>";
+  }).join('');
+}
+function togCh(val,el){
+  if(filt.ch.has(val)){filt.ch.delete(val);el.classList.remove('on');}
+  else{filt.ch.add(val);el.classList.add('on');}
+  renderAll();
+}
+function clearCh(){
+  filt.ch.clear();
+  document.getElementById('fc-ch').querySelectorAll('.chip').forEach(function(c){c.classList.remove('on');});
+  renderAll();
+}
+function togSe(val,el){
+  if(filt.se.has(val)){filt.se.delete(val);el.classList.remove('on');}
+  else{filt.se.add(val);el.classList.add('on');}
+  rebuildCaChips();
+  renderAll();
+}
+function rebuildCaChips(){
+  var wrap=document.getElementById('f-ca-wrap');
+  if(filt.se.size===0){
+    wrap.style.display='none';
+    filt.ca.clear();filt.ma.clear();
+    document.getElementById('f-ma-wrap').style.display='none';
+    return;
+  }
+  var cas=new Set();
+  filt.se.forEach(function(se){Object.keys(hierMap[se]||{}).forEach(function(ca){cas.add(ca);});});
+  var sorted=[...cas].sort();
+  wrap.style.display='';
+  var validCa=new Set(sorted);
+  filt.ca.forEach(function(c){if(!validCa.has(c))filt.ca.delete(c);});
+  document.getElementById('fc-ca').innerHTML=sorted.map(function(v){
+    var on=filt.ca.has(v)?' on':'';
+    return"<div class='chip"+on+"' onclick='togCa("+enc(v)+",this)'>"+v+"</div>";
+  }).join('');
+  rebuildMaChips();
+}
+function togCa(val,el){
+  if(filt.ca.has(val)){filt.ca.delete(val);el.classList.remove('on');}
+  else{filt.ca.add(val);el.classList.add('on');}
+  rebuildMaChips();
+  renderAll();
+}
+function rebuildMaChips(){
+  var wrap=document.getElementById('f-ma-wrap');
+  if(filt.ca.size===0){wrap.style.display='none';filt.ma.clear();return;}
+  var mas=new Set();
+  filt.se.forEach(function(se){
+    filt.ca.forEach(function(ca){
+      if(hierMap[se]&&hierMap[se][ca])hierMap[se][ca].forEach(function(ma){mas.add(ma);});
+    });
+  });
+  var sorted=[...mas].sort();
+  if(!sorted.length){wrap.style.display='none';filt.ma.clear();return;}
+  wrap.style.display='';
+  var validMa=new Set(sorted);
+  filt.ma.forEach(function(m){if(!validMa.has(m))filt.ma.delete(m);});
+  document.getElementById('fc-ma').innerHTML=sorted.map(function(v){
+    var on=filt.ma.has(v)?' on':'';
+    return"<div class='chip"+on+"' onclick='togMa("+enc(v)+",this)'>"+v+"</div>";
+  }).join('');
+}
+function togMa(val,el){
+  if(filt.ma.has(val)){filt.ma.delete(val);el.classList.remove('on');}
+  else{filt.ma.add(val);el.classList.add('on');}
+  renderAll();
+}
+function cf(key){
+  filt[key].clear();
+  var m={reg:'fc-reg',ch:'fc-ch',pe:'fc-pe'};
+  if(m[key])document.getElementById(m[key]).querySelectorAll('.chip').forEach(function(c){c.classList.remove('on');});
+  if(key==='reg'){filt.ch.clear();document.getElementById('f-ch-wrap').style.display='none';}
+  if(key==='pe') syncQuotaToPe();
+  renderAll();
+}
+function clearHier(){
+  filt.se.clear();filt.ca.clear();filt.ma.clear();
+  document.getElementById('fc-se').querySelectorAll('.chip').forEach(function(c){c.classList.remove('on');});
+  document.getElementById('f-ca-wrap').style.display='none';
+  document.getElementById('f-ma-wrap').style.display='none';
+  renderAll();
+}
+function clearCaMa(){
+  filt.ca.clear();filt.ma.clear();
+  document.getElementById('fc-ca').querySelectorAll('.chip').forEach(function(c){c.classList.remove('on');});
+  document.getElementById('f-ma-wrap').style.display='none';
+  renderAll();
+}
+function clearMa(){
+  filt.ma.clear();
+  document.getElementById('fc-ma').querySelectorAll('.chip').forEach(function(c){c.classList.remove('on');});
+  renderAll();
+}
+
+// Date filter state (as JS Date integers: y*10000+mo*100+day)
+var dateFrom=0, dateTo=0;
+
+function dateInt(r){return r.y*10000+r.mo*100+(r.day||1);}
+
+function applyFilt(r){
+  if(filt.reg.size&&!filt.reg.has(r.reg))return false;
+  if(filt.ch.size&&!filt.ch.has(r.ch))return false;
+  if(filt.pe.size&&!filt.pe.has(r.pe))return false;
+  if(filt.se.size&&!filt.se.has(r.se))return false;
+  if(filt.ca.size&&!filt.ca.has(r.ca))return false;
+  if(filt.ma.size&&!filt.ma.has(r.ma))return false;
+  var di=dateInt(r);
+  if(dateFrom&&di<dateFrom)return false;
+  if(dateTo&&di>dateTo)return false;
+  return true;
+}
+
+function onDateChange(){
+  var f=document.getElementById('dt-from').value;
+  var t=document.getElementById('dt-to').value;
+  dateFrom=f?parseInt(f.replace(/-/g,'')):0;
+  dateTo  =t?parseInt(t.replace(/-/g,'')):0;
+  updateDateHint();
+  renderAll();
+}
+function clearDates(){
+  dateFrom=0;dateTo=0;
+  document.getElementById('dt-from').value='';
+  document.getElementById('dt-to').value='';
+  document.getElementById('date-hint').textContent='';
+  renderAll();
+}
+function updateDateHint(){
+  var el=document.getElementById('date-hint');
+  if(!dateFrom&&!dateTo){el.textContent='';return;}
+  var f=document.getElementById('dt-from').value||'';
+  var t=document.getElementById('dt-to').value||'';
+  el.textContent=(f||'…')+' ～ '+(t||'…');
+}
+
+// Pacing: given selected end date, compute expected achievement rate
+// For each month in range, pacing = end_day / total_days_in_month
+// Returns weighted pacing rate based on quota distribution across months
+function getPacingRate(mos){
+  if(!dateFrom||!dateTo)return null;
+  var fromY=Math.floor(dateFrom/10000),fromM=Math.floor((dateFrom%10000)/100),fromD=dateFrom%100;
+  var toY=Math.floor(dateTo/10000),toM=Math.floor((dateTo%10000)/100),toD=dateTo%100;
+  // Only show pacing when selection is within a single month
+  if(fromY===toY&&fromM===toM){
+    var daysInMo=new Date(toY,toM,0).getDate();
+    return toD/daysInMo;
+  }
+  // Multi-month: use today's position in the last month
+  var daysInLastMo=new Date(toY,toM,0).getDate();
+  return toD/daysInLastMo;
+}
+function getRows(){return rows.filter(function(r){return r.t==='出貨'&&applyFilt(r);});}
+function getRet(){return rows.filter(function(r){return r.t==='出退'&&applyFilt(r);});}
+function getNet(){return rows.filter(function(r){return(r.t==='出貨'||r.t==='出退')&&applyFilt(r);});}
+// For drill table: ignore se/ca/ma filters (drill.series controls what we see)
+function getNetForDrill(){return rows.filter(function(r){
+  if(r.t!=='出貨'&&r.t!=='出退')return false;
+  if(filt.reg.size&&!filt.reg.has(r.reg))return false;
+  if(filt.ch.size&&!filt.ch.has(r.ch))return false;
+  if(filt.pe.size&&!filt.pe.has(r.pe))return false;
+  var di=dateInt(r);
+  if(dateFrom&&di<dateFrom)return false;
+  if(dateTo&&di>dateTo)return false;
+  return true;
+});}
+function getAllT(){return rows.filter(function(r){return r.t&&applyFilt(r);});}
+function getSp(){return rows.filter(function(r){return r.t==='索樣'&&applyFilt(r);});}
+
+// ══════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════
+function renderAll(){
+  var d=getRows(); drillRows=getNetForDrill();
+  renderKPIs(d);
+  renderMo(d);
+  renderChPie(d);
+  renderSePie(d);
+  renderPeBar(d);
+  renderSeriesTab();
+  renderPeTab(getNet());
+  renderSp();
+  renderTrend();
+}
+
+// ── KPIs ─────────────────────────────────────────
+function renderKPIs(d){
+  var ret=getRet(),all=getAllT();
+  var outAmt=d.reduce(function(s,r){return s+r.amt;},0);
+  var retAmt=ret.reduce(function(s,r){return s+r.amt;},0);
+  var netAmt=outAmt+retAmt;
+  var allAmt=all.reduce(function(s,r){return s+r.amt;},0);
+  var spRows=getSp();
+  var sp=spRows.reduce(function(s,r){return s+r.qty;},0);
+  var spAmt=spRows.reduce(function(s,r){return s+r.amt;},0);
+  var mos=aMos(d);
+  var q=getCurQ(),qh=q.qh||{},qt=q.qtotal||{};
+  var qTot;
+  if(Object.keys(qt).length){
+    qTot=mos.reduce(function(s,m){return s+(qt[m]||0);},0);
+  } else {
+    qTot=Object.values(qh).reduce(function(s,cats){
+      return s+Object.values(cats).reduce(function(cs,c){return cs+mos.reduce(function(ms,m){return ms+((c.mo&&c.mo[m])||0);},0);},0);
+    },0);
+  }
+  var ach=qTot>0?netAmt/qTot*100:null;
+  // Pacing: expected achievement % given selected date range
+  var pacingRate=getPacingRate(mos);  // e.g. 0.613 for Jan 1-19
+  var pacingTarget=qTot*pacingRate;   // expected $ by this date
+  var pacingAch=pacingTarget>0?netAmt/pacingTarget*100:null;  // pacing achievement %
+  var kpiList=[
+    {l:'累計銷售（全部）',v:'$'+fM(allAmt),s:'出貨$'+fM(outAmt)+' 出退$'+fM(retAmt),sc:''},
+    {l:'淨銷售（出貨+出退）',v:'$'+fM(netAmt),s:d.length.toLocaleString()+' 筆出貨',sc:''},
+    {l:'整體達成率',v:ach?Math.round(ach)+'%':'—',s:qTot?((ach>=100?'✓達標':'差$'+fM(qTot-netAmt))+' 目標$'+fM(qTot)):'無配額資料',sc:!ach?'':ach>=100?'up':ach>=80?'warn':'dn'},
+    {l:'索樣',v:'$'+fM(spAmt),s:Math.round(sp).toLocaleString()+' 件',sc:''}
+  ];
+  if(pacingAch!==null){
+    kpiList.splice(3,0,{
+      l:'配速達成率',
+      v:Math.round(pacingAch)+'%',
+      s:'應達$'+fM(pacingTarget)+' ('+Math.round(pacingRate*100)+'%進度)',
+      sc:pacingAch>=100?'up':pacingAch>=80?'warn':'dn'
+    });
+  }
+  document.getElementById('kpis').innerHTML=kpiList.map(function(k){return'<div class="kpi"><div class="kpi-l">'+k.l+'</div><div class="kpi-v">'+k.v+'</div><div class="kpi-s '+k.sc+'">'+k.s+'</div></div>';}).join('');
+}
+
+// ── Overview charts ───────────────────────────────
+function renderMo(d){
+  var bm=grp(d,'mo'),mos=Object.keys(bm).map(Number).sort(function(a,b){return a-b;});
+  mkC('c-mo',{type:'bar',data:{labels:mos.map(function(m){return m+'月';}),datasets:[{data:mos.map(function(m){return bm[m];}),backgroundColor:P.gD,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return'$'+fM(c.raw);}}}},scales:{x:{grid:{color:gc},ticks:aT},y:{grid:{color:gc},ticks:{...aT,callback:function(v){return'$'+fM(v);}}}}}});
+}
+function renderChPie(d){
+  var by=grp(d,'ch'),labs=Object.keys(by).filter(Boolean).sort(),vals=labs.map(function(l){return by[l];});
+  var cols=['#1A472A','#2D6A4F','#52B788','#B7E4C7','#1E3A5F','#2C5F8A','#60A3D9','#B4B2A9'];
+  mkC('c-ch',{type:'doughnut',data:{labels:labs,datasets:[{data:vals,backgroundColor:cols.slice(0,labs.length),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#65655C',boxWidth:10,padding:10}},tooltip:{callbacks:{label:function(c){var t=c.dataset.data.reduce(function(a,b){return a+b;},0);return c.label+': '+Math.round(c.raw/t*100)+'%';}}}}}});
+}
+function renderSePie(d){
+  var by=grp(d,'se'),ents=Object.entries(by).filter(function(e){return e[0]&&e[0]!=='費用';}).sort(function(a,b){return b[1]-a[1];}).slice(0,7);
+  var cols=['#1A472A','#2D6A4F','#52B788','#95D5B2','#1E3A5F','#2C5F8A','#B4B2A9'];
+  mkC('c-se',{type:'doughnut',data:{labels:ents.map(function(e){return e[0];}),datasets:[{data:ents.map(function(e){return e[1];}),backgroundColor:cols,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#65655C',boxWidth:10,padding:10}},tooltip:{callbacks:{label:function(c){var t=c.dataset.data.reduce(function(a,b){return a+b;},0);return c.label+': '+Math.round(c.raw/t*100)+'%';}}}}}});
+}
+function renderPeBar(d){
+  var by=grp(d,'pe'),ents=Object.entries(by).filter(function(e){return e[0]&&e[0]!=='總公司';}).sort(function(a,b){return b[1]-a[1];});
+  mkC('c-pe',{type:'bar',data:{labels:ents.map(function(e){return e[0];}),datasets:[{data:ents.map(function(e){return e[1];}),backgroundColor:P.gD,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return'$'+fM(c.raw);}}}},scales:{x:{grid:{color:gc},ticks:aT},y:{grid:{color:gc},ticks:{...aT,callback:function(v){return'$'+fM(v);}}}}}});
+}
+
+// ── Series drilldown ──────────────────────────────
+function renderSeriesTab(){
+  drill={series:null,cat:null,mat:null,subCat:null,subMat:null};
+  document.getElementById('c-drill-card').style.display='none';
+  buildMainChart(); buildDrillTbl(); updateBc();
+}
+function buildMainChart(){
+  var d=drillRows,mos=aMos(d);
+  var q=getCurQ(),qh=q.qh||{};
+  var seList=[...new Set([...Object.keys(qh),...d.map(function(r){return r.se;})])].filter(function(s){return s&&s!=='費用';}).sort();
+  var quotas=seList.map(function(s){return Object.values(qh[s]||{}).reduce(function(sum,c){return sum+qSum(c.mo,mos);},0);});
+  var actuals=seList.map(function(s){return d.filter(function(r){return r.se===s;}).reduce(function(sum,r){return sum+r.amt;},0);});
+  mkC('c-sr',{type:'bar',data:{labels:seList,datasets:[{label:'配額',data:quotas,backgroundColor:P.bL,borderRadius:3},{label:'實際',data:actuals,backgroundColor:seList.map(function(s){return drill.series===s?P.g:P.gD;}),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,onClick:function(e,els){if(els.length)dInto(seList[els[0].index],null);},plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return(c.datasetIndex===0?'配額':'實際')+': $'+fM(c.raw);}}}},scales:{x:{grid:{color:gc},ticks:{...aT,maxRotation:30}},y:{grid:{color:gc},ticks:{...aT,callback:function(v){return'$'+fM(v);}}}}}});
+}
+function dInto(se,ca,mg){
+  drill.series=se;
+  drill.cat=ca;
+  drill.subCat=null;drill.subMat=null;
+  if(mg!==undefined){
+    drill.mat=(drill.mat===mg)?null:mg;
+  } else {
+    drill.mat=null;
+  }
+  buildDrillTbl();updateBc();buildDrillChart();
+}
+function togSubCat(c){
+  drill.subCat=(drill.subCat===c)?null:c;
+  drill.subMat=null;
+  buildDrillTbl();
+}
+function togSubMat(b){
+  drill.subMat=(drill.subMat===b)?null:b;
+  buildDrillTbl();
+}
+function buildDrillChart(){
+  var card=document.getElementById('c-drill-card'),title=document.getElementById('c-drill-title');
+  if(!drill.series){card.style.display='none';return;}
+  card.style.display='';
+  var d=drillRows,mos=aMos(d),q=getCurQ(),qh=q.qh||{};
+  if(!drill.cat){
+    title.textContent=drill.series+' — 分類明細';
+    var cats=[...new Set([...Object.keys(qh[drill.series]||{}),...d.filter(function(r){return r.se===drill.series;}).map(function(r){return r.ca;})])].filter(Boolean);
+    var qq=cats.map(function(c){return qh[drill.series]&&qh[drill.series][c]?qSum(qh[drill.series][c].mo,mos):0;});
+    var aa=cats.map(function(c){return d.filter(function(r){return r.se===drill.series&&r.ca===c;}).reduce(function(s,r){return s+r.amt;},0);});
+    mkDC(cats,qq,aa,function(i){dInto(drill.series,cats[i]);});
+  } else {
+    title.textContent=drill.series+' › '+drill.cat+' — 材質明細';
+    var mats=qh[drill.series]&&qh[drill.series][drill.cat]?Object.keys(qh[drill.series][drill.cat].mats||{}):[],
+        actMats=[...new Set(d.filter(function(r){return r.se===drill.series&&r.ca===drill.cat;}).map(function(r){return r.ma;}))];
+    mats=[...new Set([...mats,...actMats])].filter(Boolean);
+    var qq=mats.map(function(m){return(qh[drill.series]&&qh[drill.series][drill.cat]&&qh[drill.series][drill.cat].mats[m])?qSum(qh[drill.series][drill.cat].mats[m],mos):0;});
+    var aa=mats.map(function(m){return d.filter(function(r){return r.se===drill.series&&r.ca===drill.cat&&r.ma===m;}).reduce(function(s,r){return s+r.amt;},0);});
+    mkDC(mats,qq,aa,null);
+  }
+}
+function mkDC(labels,q,a,onClick){
+  mkC('c-drill',{type:'bar',data:{labels:labels,datasets:[{label:'配額',data:q,backgroundColor:P.bL,borderRadius:3},{label:'實際',data:a,backgroundColor:P.g,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,onClick:onClick?function(e,els){if(els.length)onClick(els[0].index);}:null,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return(c.datasetIndex===0?'配額':'實際')+': $'+fM(c.raw);}}}},scales:{x:{grid:{color:gc},ticks:{...aT,maxRotation:30}},y:{grid:{color:gc},ticks:{...aT,callback:function(v){return'$'+fM(v);}}}}}});
+}
+function buildDrillTbl(){
+  var d=drillRows,mos=aMos(d),tb=document.getElementById('sr-body'),html='';
+  var q=getCurQ(),qh=q.qh||{};
+  function rH(cls,ind,bc,name,qq,aa){
+    var b=bc?"<button class='dbtn' onclick='"+bc+"'>▶</button>":'';
+    return"<tr class='"+cls+"'><td>"+b+"</td><td class='"+ind+"'>"+name+"</td><td>$"+fM(qq)+"</td><td>$"+fM(aa)+"</td><td>"+aBadge(qq,aa)+"</td><td>"+pbH(qq,aa)+"</td></tr>";
+  }
+  if(!drill.series){
+    var seList=[...new Set([...Object.keys(qh).filter(function(s){return s&&s!=='費用';}), ...d.map(function(r){return r.se;}).filter(function(s){return s&&s!=='費用'&&s!=='';})  ])].sort();
+    if(!seList.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--tx3)">沒有資料</td></tr>';return;}
+    seList.forEach(function(s){
+      var qq=Object.values(qh[s]||{}).reduce(function(sum,c){return sum+qSum(c.mo,mos);},0);
+      var aa=d.filter(function(r){return r.se===s;}).reduce(function(sum,r){return sum+r.amt;},0);
+      html+=rH('row-s','',"dInto("+enc(s)+",null)",s,qq,aa);
+    });
+  } else if(!drill.cat){
+    var quotaCats=Object.keys(qh[drill.series]||{});
+    var salesCaMap={};
+    d.filter(function(r){return r.se===drill.series;}).forEach(function(r){
+      var qca=r.quotaCa||getCaGroup(r.ca);
+      if(!salesCaMap[qca])salesCaMap[qca]=new Set();
+      // Use ca as brand key (original name)
+      salesCaMap[qca].add(r.ca);
+    });
+    var allCats=[...new Set([...quotaCats,...Object.keys(salesCaMap)])].filter(Boolean).sort();
+    allCats.forEach(function(c){
+      var qq=qh[drill.series]&&qh[drill.series][c]?qSum(qh[drill.series][c].mo,mos):0;
+      var caRows=d.filter(function(r){return r.se===drill.series&&((r.quotaCa||getCaGroup(r.ca))===c||r.ca===c);});
+      var aa=caRows.reduce(function(sum,r){return sum+r.amt;},0);
+      var hasMats=qh[drill.series]&&qh[drill.series][c]&&Object.keys(qh[drill.series][c].mats||{}).length>0;
+      // For compatibility: check if data uses old remapped ca or original ca
+      var subBrands=[...new Set(caRows.map(function(r){return r.ca;}))].filter(function(b){return b!==c;}).sort();
+      // Detect old data format: if CA_REMAP was applied during upload, r.ca is already
+      // the quota ca (e.g. '平行輸入&其他') and sub-brands are not recoverable
+      // New data: r.ca is original brand name (e.g. '幫寶適')
+      var CA_REVERSE={'平行輸入&其他':['幫寶適','大王','滿意寶寶'],'P&G+花王+暖暖包':['P&G','小白兔暖暖包'],
+        '五月花+得意+橘子工坊':['五月花','得意','橘子工坊'],'其他':['生活用品/五金','醫療器材']};
+      var expectedBrands=CA_REVERSE[c]||[];
+      var hasOldData=!subBrands.length&&expectedBrands.length>0;
+      var hasSubBrands=subBrands.length>0||hasOldData;
+      // Main row: if has sub-brands, show expand button; else drill to mats
+      var mainBtn=hasSubBrands?"togSubCat("+enc(c)+")":(hasMats?"dInto("+enc(drill.series)+","+enc(c)+")":"");
+      var isOpenCat=(drill.subCat===c);
+      var mainLabel=c+(isOpenCat?' ▾':((hasSubBrands||hasMats)?' ▸':''));
+      html+=rH('row-c','ind1',mainBtn,mainLabel,qq,aa);
+      // Sub-brands shown when expanded
+      if(hasSubBrands&&isOpenCat){
+        if(hasOldData&&!subBrands.length){
+          html+="<tr><td></td><td class='ind2' colspan='5' style='color:var(--tx3);font-size:11px;padding:6px 0'>請重新上傳銷售資料以查看品牌明細</td></tr>";
+        }
+        subBrands.forEach(function(b){
+          var bRows=caRows.filter(function(r){return r.ca===b;});
+          var ba=bRows.reduce(function(s,r){return s+r.amt;},0);
+          var bq=aa>0?qq*ba/aa:0;
+          var bRawMats=[...new Set(bRows.map(function(r){return r.rawMa||r.ma;}))];
+          var bMats=bRawMats; // use raw material names for display
+          var bHasMats=bRawMats.length>1;
+          var bIsOpen=(drill.subMat===b);
+          html+=rH('row-m','ind2',bHasMats?"togSubMat("+enc(b)+")":"",
+            b+(bIsOpen?' ▾':bHasMats?' ▸':''),bq,ba);
+          if(bIsOpen){
+            bMats.sort().forEach(function(bm){
+              var bma=bRows.filter(function(r){return (r.rawMa||r.ma)===bm;}).reduce(function(s,r){return s+r.amt;},0);
+              if(bma>0)html+=rH('row-m','ind3','',bm,0,bma);
+            });
+          }
+        });
+      }
+    });
+  } else {
+    // Material level: group sales by maGroup (quota key), show sub-materials as rows
+    var quotaMats=Object.keys((qh[drill.series]&&qh[drill.series][drill.cat])?qh[drill.series][drill.cat].mats||{}:{});
+    var salesRows=d.filter(function(r){return r.se===drill.series&&r.ca===drill.cat;});
+    // Collect all maGroup values from sales (may include groups not in quota)
+    var salesGroups=[...new Set(salesRows.map(function(r){return getMaGroup(r.ca,r.ma);}))];
+    var allGroups=[...new Set([...quotaMats,...salesGroups])].filter(Boolean);
+    allGroups.forEach(function(mg){
+      var qq=(qh[drill.series]&&qh[drill.series][drill.cat]&&qh[drill.series][drill.cat].mats[mg])?qSum(qh[drill.series][drill.cat].mats[mg],mos):0;
+      // Sales: match rows where maGroup = mg
+      var mgRows=salesRows.filter(function(r){return getMaGroup(r.ca,r.ma)===mg;});
+      var aa=mgRows.reduce(function(sum,r){return sum+r.amt;},0);
+      // Check if this group has sub-materials to show
+      var subMats=[...new Set(mgRows.map(function(r){return r.rawMa||r.ma;}))];
+      var hasSubMats=subMats.length>1||(subMats.length===1&&subMats[0]!==mg);
+      var isOpen=(drill.mat===mg);
+      var btn=hasSubMats?"dInto("+enc(drill.series)+","+enc(drill.cat)+","+enc(mg)+")":"";
+      html+=rH(isOpen?'row-m row-open':'row-m','ind2',btn,mg+(isOpen?' ▾':hasSubMats?' ▸':''),qq,aa);
+      // Show sub-materials if expanded
+      if(isOpen){
+        subMats.sort().forEach(function(sm){
+          var sa=mgRows.filter(function(r){return (r.rawMa||r.ma)===sm;}).reduce(function(s,r){return s+r.amt;},0);
+          // Use parent quota proportionally for sub-item progress bar
+          var sqq=aa>0?qq*sa/aa:0;
+          html+=rH('row-m','ind3','',sm,sqq,sa);
+        });
+      }
+    });
+  }
+  tb.innerHTML=html;
+}
+function updateBc(){
+  var el=document.getElementById('bc'),html='';
+  html+="<span class='bc-item"+(drill.series===null?' cur':'')+"' onclick='dInto(null,null)'>全部系列</span>";
+  if(drill.series){html+="<span class='bc-sep'>›</span><span class='bc-item"+(drill.cat===null?' cur':'')+"' onclick='dInto("+enc(drill.series)+",null)'>"+drill.series+"</span>";}
+  if(drill.cat){html+="<span class='bc-sep'>›</span><span class='bc-item cur'>"+drill.cat+"</span>";}
+  el.innerHTML=html;
+}
+
+// ── Person tab ────────────────────────────────────
+function renderPeTab(d){
+  var net=getNetForDrill();
+  var by={};
+  net.forEach(function(r){if(r.pe&&r.pe!=='總公司'){by[r.pe]=(by[r.pe]||0)+r.amt;}});
+  var mos=[...new Set(d.map(function(r){return r.mo;}))];
+  var moStr=mos.map(String);
+
+  // Get quota per person from QUOTA structure
+  function getPeQuota(pe){
+    if(!QUOTA[pe])return 0;
+    var regs=Object.keys(QUOTA[pe]).filter(function(r){return r!=='_ALL';});
+    // Use summary detection logic: find full-region row
+    var fullReg=regs.find(function(r){return r.indexOf('全區')>=0;});
+    var useRegs=fullReg?[fullReg]:regs;
+    var tot=0;
+    useRegs.forEach(function(reg){
+      Object.values(QUOTA[pe][reg]||{}).forEach(function(chObj){
+        moStr.forEach(function(m){tot+=(chObj.qtotal&&chObj.qtotal[m])||0;});
+      });
+    });
+    return tot;
+  }
+
+  var ents=Object.entries(by).sort(function(a,b){return b[1]-a[1];});
+  var peData=ents.map(function(e){
+    var pe=e[0],sales=e[1];
+    var quota=getPeQuota(pe);
+    var ach=quota>0?Math.round(sales/quota*100):null;
+    return{pe:pe,sales:sales,quota:quota,ach:ach};
+  });
+
+  // Progress bars
+  var prog='';
+  peData.forEach(function(r){
+    var pct=r.quota>0?Math.min(r.ach,150):0;
+    var col=r.ach===null?P.gr:r.ach>=100?P.g:r.ach>=80?P.am:P.rd;
+    var achTxt=r.ach!==null?r.ach+'%':'無配額';
+    var achCol=r.ach===null?'var(--tx3)':r.ach>=100?'var(--gn)':r.ach>=80?'var(--am)':'var(--rd)';
+    prog+='<div style="margin-bottom:14px">';
+    prog+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">';
+    prog+='<span style="font-size:13px;font-weight:500">'+r.pe+'</span>';
+    prog+='<div style="display:flex;gap:16px;font-size:12px;color:var(--tx2)">';
+    prog+='<span>$'+fM(r.sales)+'</span>';
+    if(r.quota)prog+='<span style="color:var(--tx3)">/ $'+fM(r.quota)+'</span>';
+    prog+='<span style="font-weight:600;color:'+achCol+';min-width:42px;text-align:right">'+achTxt+'</span>';
+    prog+='</div></div>';
+    // Double bar: quota (light) + actual (dark)
+    prog+='<div style="position:relative;height:10px;background:var(--surf2);border-radius:5px;overflow:hidden">';
+    if(r.quota>0){
+      // Actual fill
+      var fillPct=Math.min(r.ach||0,100);
+      prog+='<div style="position:absolute;left:0;top:0;height:10px;border-radius:5px;background:'+col+';width:'+fillPct+'%;transition:width .4s"></div>';
+      // Overflow indicator
+      if(r.ach>100){
+        prog+='<div style="position:absolute;left:0;top:0;height:10px;border-radius:5px;background:'+P.g+';opacity:0.3;width:100%"></div>';
+        prog+='<div style="position:absolute;left:0;top:0;height:10px;background:'+P.g+';width:'+Math.min((r.ach-100),50)+'%;border-radius:0 5px 5px 0;left:100%;transform:translateX(-100%)"></div>';
+      }
+    } else {
+      prog+='<div style="position:absolute;left:0;top:0;height:10px;border-radius:5px;background:var(--surf3);width:60%"></div>';
+    }
+    prog+='</div>';
+    // Pacing marker
+    var pacingRate=getPacingRate(moStr);
+    if(pacingRate&&r.quota>0){
+      var mPos=Math.min(pacingRate*100,99);
+      prog+='<div style="position:relative;height:4px;margin-top:2px">';
+      prog+='<div style="position:absolute;left:'+mPos+'%;transform:translateX(-50%);width:2px;height:4px;background:var(--tx3);border-radius:1px" title="應達進度"></div>';
+      prog+='</div>';
+    }
+    prog+='</div>';
+  });
+  document.getElementById('pe-progress').innerHTML=prog||'<div style="color:var(--tx3);padding:1rem;text-align:center">請上傳配額資料</div>';
+
+  // Chart (keep existing)
+  mkC('c-pe2',{type:'bar',data:{labels:ents.map(function(e){return e[0];}),datasets:[{data:ents.map(function(e){return e[1];}),backgroundColor:P.gD,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return'$'+fM(c.raw);}}}},scales:{x:{grid:{color:gc},ticks:{...aT,callback:function(v){return'$'+fM(v);}}},y:{grid:{display:false},ticks:aT}}}});
+
+  // Table
+  document.getElementById('pe-body').innerHTML=peData.map(function(r){
+    var achCol=r.ach===null?'var(--tx3)':r.ach>=100?'var(--gn)':r.ach>=80?'var(--am)':'var(--rd)';
+    return'<tr>'+
+      '<td>'+r.pe+'</td>'+
+      '<td>'+(r.quota?'$'+fM(r.quota):'—')+'</td>'+
+      '<td style="font-weight:500">$'+fM(r.sales)+'</td>'+
+      '<td style="color:'+achCol+';font-weight:600">'+(r.ach!==null?r.ach+'%':'—')+'</td>'+
+      '<td style="color:var(--tx3)">$'+fM(mos.length?r.sales/mos.length:r.sales)+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ── Samples tab ───────────────────────────────────
+function renderSp(){
+  var sp=getSp();
+  var allSp=rows.filter(function(r){return r.t==='索樣'&&applyFiltNoSe(r);});
+
+  // ── Sample quota limits (hardcoded from quota calculation) ──
+  var SP_LIMITS=[
+    {pe:'廖大新', reg:'直營通路',    ch:'嬰藥',    limit:14076},
+    {pe:'廖大新', reg:'北區通路',    ch:'安養&醫材', limit:8918},
+    {pe:'廖大新', reg:'南區通路',    ch:'安養&醫材', limit:10512},
+    {pe:'廖大新', reg:'新竹區通路',  ch:'安養&醫材', limit:1723},
+    {pe:'廖大新', reg:'中區通路',    ch:'安養&醫材', limit:2078},
+    {pe:'陳明祥', reg:'個人精品通路', ch:'嬰藥',    limit:37243},
+    {pe:'陳明祥', reg:'全省量販通路', ch:'嬰藥',    limit:24759},
+    {pe:'陳明祥', reg:'寵物通路',    ch:'嬰藥',    limit:951},
+    {pe:'陳明祥', reg:'彰投轄區',    ch:'嬰藥',    limit:15146},
+    {pe:'陳明祥', reg:'彰投轄區',    ch:'安養&醫材', limit:7377},
+    {pe:'陳明祥', reg:'標案通路',    ch:'安養&醫材', limit:1231},
+    {pe:'陳明祥', reg:'超市通路-楓康',ch:'嬰藥',    limit:2158},
+    {pe:'張宏榜', reg:'中苗轄區',    ch:'嬰藥',    limit:7941},
+    {pe:'張宏榜', reg:'中苗轄區',    ch:'安養&醫材', limit:12609},
+    {pe:'張宏榜', reg:'台中轄區',    ch:'嬰藥',    limit:10493},
+    {pe:'張宏榜', reg:'台中轄區',    ch:'安養&醫材', limit:3900},
+    {pe:'張宏榜', reg:'苗栗區通路',  ch:'安養&醫材', limit:1045},
+  ];
+
+  // YTD pacing: how many months elapsed / 12
+  var moAll=rows.filter(function(r){return r.t==='出貨';}).map(function(r){return r.mo;});
+  var maxMo=moAll.length?Math.max.apply(null,moAll):1;
+  var ytdRate=maxMo/12;  // e.g. 3/12 = 25% through year
+
+  // ── Section 1: 索樣額度進度（廖大新、陳明祥、張宏榜）──
+  var CH_REMAP={'嬰兒房':'嬰藥','藥局':'嬰藥','藥局/嬰兒房':'嬰藥','機關福利社':'嬰藥',
+    '安養院':'安養&醫材','醫院':'安養&醫材','醫院/安養院':'安養&醫材','醫療器材行':'安養&醫材'};
+
+  var h='';
+  // Group limits by pe
+  var peList=['廖大新','陳明祥','張宏榜'];
+  peList.forEach(function(pe){
+    var peLimits=SP_LIMITS.filter(function(l){return l.pe===pe;});
+    var peUsedTotal=allSp.filter(function(r){return r.pe===pe;}).reduce(function(s,r){return s+r.amt;},0);
+    var peLimitTotal=peLimits.reduce(function(s,l){return s+l.limit;},0);
+    var peYtdTarget=peLimitTotal*ytdRate;
+
+    h+='<div class="card" style="margin-bottom:12px">';
+    // Header
+    h+='<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1rem">';
+    h+='<div class="card-t" style="margin:0">'+pe+' 索樣額度</div>';
+    h+='<div style="font-size:11px;color:var(--tx3)">全年上限 $'+fM(peLimitTotal)+'　已用 <span style="color:'+(peUsedTotal>peYtdTarget?'var(--rd)':'var(--gn)')+'">$'+fM(peUsedTotal)+'</span>　YTD應達 $'+fM(peYtdTarget)+'</div>';
+    h+='</div>';
+
+    // Rows per reg×ch
+    peLimits.forEach(function(l){
+      // Match actual samples by pe+reg only
+      // (sample 客戶分類 is '員工購買' etc, not directly mapped to 嬰藥/安養)
+      var regSp=allSp.filter(function(r){return r.pe===pe&&r.reg===l.reg;});
+      // Distribute used proportionally across ch limits within same reg
+      var regLimits=SP_LIMITS.filter(function(x){return x.pe===pe&&x.reg===l.reg;});
+      var regLimitTotal=regLimits.reduce(function(s,x){return s+x.limit;},0);
+      var regUsed=regSp.reduce(function(s,r){return s+r.amt;},0);
+      // Allocate to this ch proportionally
+      var used=regLimitTotal>0?regUsed*(l.limit/regLimitTotal):0;
+
+      var ytdTarget=l.limit*ytdRate;
+      var usedPct=l.limit>0?Math.min(used/l.limit*100,100):0;
+      var ytdPct=Math.min(ytdRate*100,100);
+      var overYtd=used>ytdTarget;
+      var barCol=used>=l.limit?P.rd:(overYtd?P.g:P.am);
+
+      h+='<div style="margin-bottom:10px">';
+      // Label row
+      h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">';
+      h+='<span style="font-size:12px">'+l.reg+'<span style="font-size:10px;color:var(--tx3);margin-left:5px">'+l.ch+'</span></span>';
+      h+='<div style="font-size:11px;display:flex;gap:12px">';
+      h+='<span style="color:var(--tx3)">上限 $'+fM(l.limit)+'</span>';
+      h+='<span style="color:'+(overYtd?'var(--gn)':'var(--am)')+'">YTD應達 $'+fM(Math.round(ytdTarget))+'</span>';
+      h+='<span style="font-weight:600;color:'+(used>l.limit?'var(--rd)':overYtd?'var(--gn)':'var(--tx2)')+'">已用 $'+fM(used)+'</span>';
+      h+='</div></div>';
+      // Progress bar
+      h+='<div style="position:relative;height:8px;background:var(--surf2);border-radius:4px">';
+      // Used bar
+      h+='<div style="position:absolute;left:0;top:0;height:8px;border-radius:4px;background:'+barCol+';width:'+usedPct+'%"></div>';
+      // YTD marker line
+      h+='<div style="position:absolute;top:-2px;height:12px;width:2px;background:var(--tx3);border-radius:1px;left:'+ytdPct+'%" title="YTD應達位置"></div>';
+      h+='</div>';
+      // Mini label under bar
+      h+='<div style="position:relative;height:14px;font-size:9px;color:var(--tx3)">';
+      h+='<span style="position:absolute;left:'+ytdPct+'%;transform:translateX(-50%)">▲'+Math.round(ytdRate*100)+'%</span>';
+      h+='</div>';
+      h+='</div>';
+    });
+
+    // Total row
+    h+='<div style="border-top:.5px solid var(--bd);padding-top:8px;display:flex;justify-content:space-between;font-size:12px">';
+    h+='<span style="font-weight:500">小計</span>';
+    h+='<span>上限 $'+fM(peLimitTotal)+'　YTD應達 $'+fM(Math.round(peYtdTarget))+'　已用 <span style="font-weight:600;color:'+(peUsedTotal>peYtdTarget?'var(--gn)':'var(--am)')+'">$'+fM(peUsedTotal)+'</span></span>';
+    h+='</div>';
+    h+='</div>';
+  });
+
+  // ── Section 2: 索樣圖表 by 系列 ──
+  h+='<div class="g2" style="margin-top:4px">';
+  var byAmt=sp.reduce(function(a,r){a[r.se]=(a[r.se]||0)+r.amt;return a;},{});
+  var ents=Object.entries(byAmt).filter(function(e){return e[0];}).sort(function(a,b){return b[1]-a[1];});
+  h+='<div class="card"><div class="card-t">索樣金額 by 系列</div><div class="cw-lg"><canvas id="c-sp"></canvas></div></div>';
+  var detail=sp.reduce(function(a,r){
+    var k=r.se+'__'+r.ca;
+    if(!a[k])a[k]={se:r.se,ca:r.ca,amt:0,qty:0};
+    a[k].amt+=r.amt;a[k].qty+=r.qty;return a;
+  },{});
+  h+='<div class="card"><div class="card-t">索樣明細</div><div class="tbl-wrap"><table><thead><tr><th>系列</th><th>分類</th><th>金額／件數</th></tr></thead><tbody>';
+  Object.values(detail).sort(function(a,b){return b.amt-a.amt;}).forEach(function(r){
+    h+='<tr><td>'+r.se+'</td><td>'+r.ca+'</td><td>$'+fM(r.amt)+'<br><span style="font-size:10px;color:var(--tx3)">'+Math.round(r.qty).toLocaleString()+' 件</span></td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  h+='</div>';
+
+  document.getElementById('p-sp').innerHTML='<div>'+h+'</div>';
+
+  // Draw chart
+  mkC('c-sp',{type:'bar',data:{labels:ents.map(function(e){return e[0];}),datasets:[{data:ents.map(function(e){return e[1];}),backgroundColor:P.bD,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return'$'+fM(c.raw);}}}},scales:{x:{grid:{color:gc},ticks:{...aT,maxRotation:30}},y:{grid:{color:gc},ticks:{...aT,callback:function(v){return'$'+fM(v);}}}}}});
+}
+
+// ── Trend tab ─────────────────────────────────────
+function renderTrend(){
+  var filtered=rows.filter(function(r){return r.t==='出貨'&&applyFilt(r);});
+  var years=[...new Set(filtered.map(function(r){return r.y;}))].sort();
+  var allMos=[...new Set(filtered.map(function(r){return r.mo;}))].sort(function(a,b){return a-b;});
+  var cols={2024:'#92400E',2025:'#1E3A5F',2026:'#1A472A',2027:'#52B788'};
+  var ds=years.map(function(y){
+    var bm=filtered.filter(function(r){return r.y===y;}).reduce(function(a,r){a[r.mo]=(a[r.mo]||0)+r.amt;return a;},{});
+    return{label:y+'年',data:allMos.map(function(m){return bm[m]||null;}),borderColor:cols[y]||'#888',backgroundColor:(cols[y]||'#888')+'18',fill:true,tension:.35,pointRadius:4};
+  });
+  mkC('c-tr',{type:'line',data:{labels:allMos.map(function(m){return m+'月';}),datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': $'+fM(c.raw);}}}},scales:{x:{grid:{color:gc},ticks:aT},y:{grid:{color:gc},ticks:{...aT,callback:function(v){return'$'+fM(v);}}}}}});
+  document.getElementById('tr-leg').innerHTML=years.map(function(y){return'<span class="leg-i"><span class="leg-sq" style="background:'+(cols[y]||'#888')+'"></span>'+y+'年</span>';}).join('');
+  document.getElementById('tr-head').innerHTML='<th>月份</th>'+years.map(function(y){return'<th>'+y+'年</th>';}).join('')+(years.length>=2?'<th>YoY</th>':'');
+  var yd={};
+  years.forEach(function(y){yd[y]=filtered.filter(function(r){return r.y===y;}).reduce(function(a,r){a[r.mo]=(a[r.mo]||0)+r.amt;return a;},{});});
+  document.getElementById('tr-body').innerHTML=allMos.map(function(m){
+    var cells=years.map(function(y){return'<td>$'+fM(yd[y][m]||0)+'</td>';}).join('');
+    var yoy='';
+    if(years.length>=2){var cur=yd[years[years.length-1]][m]||0,prv=yd[years[years.length-2]][m]||0,pct=prv>0?Math.round((cur-prv)/prv*100):null;yoy='<td style="color:'+(pct===null?'var(--tx3)':pct>=0?'var(--gn2)':'var(--rd)')+'">'+( pct!==null?(pct>=0?'+':'')+pct+'%':'—')+'</td>';}
+    return'<tr><td>'+m+'月</td>'+cells+yoy+'</tr>';
+  }).join('');
+}
+
+// ── Misc ──────────────────────────────────────────
+
+// ── Executive Dashboard ──────────────────────────
+function renderExec(){
+  var d=getNetForDrill();
+  var allD=rows.filter(function(r){return applyFiltNoSe(r);});
+  var mos=aMos(d.filter(function(r){return r.t==='出貨';}));
+  var q=getCurQ(),qh=q.qh||{};
+
+  // Build series data
+  var seList=[...new Set([...Object.keys(qh).filter(function(s){return s&&s!=='費用';}),
+    ...d.map(function(r){return r.se;}).filter(function(s){return s&&s!=='費用';})
+  ])].sort();
+
+  // 陳列 total across all series (since 陳列 is in 費用 series)
+  var totalDisp=allD.filter(function(r){return r.t==='陳列';}).reduce(function(s,r){return s+r.amt;},0);
+
+  var seData=seList.map(function(se){
+    var quota=Object.values(qh[se]||{}).reduce(function(s,c){return s+qSum(c.mo,mos);},0);
+    var ship=allD.filter(function(r){return r.se===se&&r.t==='出貨';}).reduce(function(s,r){return s+r.amt;},0);
+    var ret=allD.filter(function(r){return r.se===se&&r.t==='出退';}).reduce(function(s,r){return s+r.amt;},0);
+    var sp=allD.filter(function(r){return r.se===se&&r.t==='索樣';}).reduce(function(s,r){return s+r.amt;},0);
+    var disp=allD.filter(function(r){return r.se===se&&r.t==='陳列';}).reduce(function(s,r){return s+r.amt;},0);
+    var net=ship+ret;
+    var ach=quota>0?Math.round(net/quota*100):null;
+    var retRate=ship>0?Math.round(ret/ship*1000)/10:0;
+    var spPct=net>0?Math.round(sp/net*1000)/10:0;
+    var totalNet=d.filter(function(r){return r.t==='出貨'||r.t==='出退';}).reduce(function(s,r){return s+r.amt;},0);
+    var pct=totalNet>0?Math.round(net/totalNet*1000)/10:0;
+    return{se:se,quota:quota,ship:ship,ret:ret,sp:sp,disp:disp,net:net,ach:ach,retRate:retRate,spPct:spPct,pct:pct};
+  });
+
+  // Totals row
+  var tot={
+    quota:seData.reduce(function(s,r){return s+r.quota;},0),
+    ship:seData.reduce(function(s,r){return s+r.ship;},0),
+    ret:seData.reduce(function(s,r){return s+r.ret;},0),
+    sp:seData.reduce(function(s,r){return s+r.sp;},0),
+    net:seData.reduce(function(s,r){return s+r.net;},0)
+  };
+  tot.ach=tot.quota>0?Math.round(tot.net/tot.quota*100):null;
+  tot.retRate=tot.ship>0?Math.round(tot.ret/tot.ship*1000)/10:0;
+  tot.spPct=tot.net>0?Math.round(tot.sp/tot.net*1000)/10:0;
+
+  // Pacing
+  var pacingRate=getPacingRate(mos);
+  var pacingTarget=tot.quota*(pacingRate||1);
+
+  // Color helpers
+  function achColor(v){return v===null?'var(--tx3)':v>=100?'var(--gn)':v>=80?'var(--am)':'var(--rd)';}
+  function achBg(v){return v===null?'':v>=100?'var(--gn3)':v>=80?'var(--am2)':'var(--rd2)';}
+  function retColor(v){return Math.abs(v)>3?'var(--rd)':'var(--tx2)';}
+
+  // Build HTML
+  var h='';
+
+  // ── Top KPI strip ──
+  h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.25rem">';
+  var kpis=[
+    {l:'累計淨銷售',v:'$'+fM(tot.net),s:tot.quota?'目標$'+fM(tot.quota):'',c:''},
+    {l:'整體達成率',v:(tot.ach||'—')+(tot.ach?'%':''),s:pacingRate?'配速應達$'+fM(pacingTarget):'',c:tot.ach>=100?'up':tot.ach>=80?'warn':'dn'},
+    {l:'出貨合計',v:'$'+fM(tot.ship),s:'',c:''},
+    {l:'出退合計',v:'$'+fM(tot.ret),s:'退貨率'+Math.abs(tot.retRate)+'%',c:Math.abs(tot.retRate)>3?'dn':''},
+    {l:'索樣合計',v:'$'+fM(tot.sp),s:'',c:''}
+  ];
+  kpis.forEach(function(k){h+='<div class="kpi"><div class="kpi-l">'+k.l+'</div><div class="kpi-v">'+k.v+'</div><div class="kpi-s '+k.c+'">'+k.s+'</div></div>';});
+  h+='</div>';
+
+  // ── Achievement bar chart ──
+  h+='<div class="g2" style="margin-bottom:12px">';
+  // Left: achievement % by series (horizontal bars)
+  h+='<div class="card"><div class="card-t">系列達成率</div>';
+  h+='<div style="display:flex;flex-direction:column;gap:8px;padding:4px 0">';
+  seData.filter(function(r){return r.quota>0;}).sort(function(a,b){return (b.ach||0)-(a.ach||0);}).forEach(function(r){
+    var pct=Math.min(r.ach||0,150);
+    var col=r.ach>=100?P.g:r.ach>=80?P.am:P.rd;
+    h+='<div>';
+    h+='<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">';
+    h+='<span>'+r.se+'</span>';
+    h+='<span style="font-weight:500;color:'+achColor(r.ach)+'">'+( r.ach!==null?r.ach+'%':'—')+'</span></div>';
+    h+='<div style="position:relative;height:6px;background:var(--surf2);border-radius:3px">';
+    h+='<div style="position:absolute;left:0;top:0;height:6px;border-radius:3px;background:'+col+';width:'+Math.min(pct/1.5,100)+'%"></div>';
+    if(r.ach>100){h+='<div style="position:absolute;left:66.7%;top:-1px;width:1px;height:8px;background:var(--tx3)"></div>';}
+    h+='</div></div>';
+  });
+  h+='</div></div>';
+
+  // Right: net sales by series (donut-like bar)
+  h+='<div class="card"><div class="card-t">系列業績佔比</div>';
+  var cols2=['#1A472A','#2D6A4F','#52B788','#95D5B2','#1E3A5F','#2C5F8A','#60A3D9','#B4B2A9','#EF9F27'];
+  h+='<div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">';
+  seData.filter(function(r){return r.net>0;}).sort(function(a,b){return b.net-a.net;}).forEach(function(r,i){
+    h+='<div>';
+    h+='<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">';
+    h+='<span>'+r.se+'</span>';
+    h+='<span style="color:var(--tx2)">$'+fM(r.net)+'　<span style="color:var(--tx3)">'+r.pct+'%</span></span></div>';
+    h+='<div style="height:5px;background:var(--surf2);border-radius:3px">';
+    h+='<div style="height:5px;border-radius:3px;background:'+cols2[i%cols2.length]+';width:'+r.pct+'%"></div></div></div>';
+  });
+  h+='</div></div>';
+  h+='</div>';
+
+  // ── Detail table ──
+  h+='<div class="card">';
+  h+='<div class="card-t">系列明細 <span>含出貨、出退、索樣、陳列</span></div>';
+  h+='<div class="tbl-wrap"><table>';
+  h+='<thead><tr>';
+  ['系列','配額目標','出貨','出退','索樣','陳列','淨銷售','達成率','退貨率','銷售佔比'].forEach(function(col){
+    h+='<th>'+col+'</th>';
+  });
+  h+='</tr></thead><tbody>';
+
+  // Total row
+  h+='<tr style="font-weight:600;background:var(--surf2)">';
+  h+='<td>全部合計</td>';
+  h+='<td>$'+fM(tot.quota)+'</td>';
+  h+='<td>$'+fM(tot.ship)+'</td>';
+  h+='<td style="color:var(--rd)">'+( tot.ret<0?'(':'')+'$'+fM(Math.abs(tot.ret))+(tot.ret<0?')':'')+'</td>';
+  h+='<td>$'+fM(tot.sp)+'</td>';
+  h+='<td>$'+fM(totalDisp)+'</td>';
+  h+='<td>$'+fM(tot.net)+'</td>';
+  h+='<td style="color:'+achColor(tot.ach)+';background:'+achBg(tot.ach)+'">'+( tot.ach!==null?tot.ach+'%':'—')+'</td>';
+  h+='<td style="color:'+retColor(tot.retRate)+'">'+tot.retRate+'%</td>';
+  h+='<td>100%</td></tr>';
+
+  seData.forEach(function(r){
+    h+='<tr>';
+    h+='<td>'+r.se+'</td>';
+    h+='<td>'+(r.quota?'$'+fM(r.quota):'—')+'</td>';
+    h+='<td>$'+fM(r.ship)+'</td>';
+    h+='<td style="color:'+(r.ret<0?'var(--rd)':'inherit')+'">'+( r.ret<0?'(':'')+'$'+fM(Math.abs(r.ret))+(r.ret<0?')':'')+'</td>';
+    h+='<td>'+(r.sp?'$'+fM(r.sp):'—')+'</td>';
+    h+='<td>'+(r.disp?'$'+fM(r.disp):'—')+'</td>';
+    h+='<td style="font-weight:500">$'+fM(r.net)+'</td>';
+    h+='<td style="color:'+achColor(r.ach)+';background:'+achBg(r.ach)+'">'+( r.ach!==null?r.ach+'%':'—')+'</td>';
+    h+='<td style="color:'+retColor(r.retRate)+'">'+r.retRate+'%</td>';
+    h+='<td style="color:var(--tx3)">'+r.pct+'%</td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+
+  document.getElementById('ex-content').innerHTML=h;
+}
+
+// applyFilt without se/ca/ma for exec view
+function applyFiltNoSe(r){
+  if(filt.reg.size&&!filt.reg.has(r.reg))return false;
+  if(filt.ch.size&&!filt.ch.has(r.ch))return false;
+  if(filt.pe.size&&!filt.pe.has(r.pe))return false;
+  var di=dateInt(r);
+  if(dateFrom&&di<dateFrom)return false;
+  if(dateTo&&di>dateTo)return false;
+  return true;
+}
+
+function goTab(t){
+  ['ov','sr','pe','sp','tr','ex'].forEach(function(id){document.getElementById('p-'+id).style.display=id===t?'':'none';});
+  document.querySelectorAll('.tab').forEach(function(b,i){b.classList.toggle('on',['ov','sr','pe','sp','tr','ex'][i]===t);});
+  if(t==='ex')renderExec();
+}
+function showL(msg){var l=document.getElementById('loading');var lm=document.getElementById('lmsg');if(l)l.style.display='flex';if(lm)lm.textContent=msg||'處理中...';}
+function hideL(){var l=document.getElementById('loading');if(l)l.style.display='none';}
+
+window.onload=async function(){
+  var loaded=await loadData();
+  var map=lsGet(K.sa)||{};
+  if(Object.keys(map).length>0){
+    openDash();
+  } else {
+    hideL();
+    var m=document.getElementById('mgr');
+    m.style.display='flex';
+    m.innerHTML='<div style="text-align:center;padding:4rem;max-width:400px;margin:auto"><div style="font-size:64px;margin-bottom:1.5rem">📊</div><h2 style="font-weight:300;color:var(--tx1);margin-bottom:.75rem">業務銷售儀表板</h2><p style="color:var(--tx3);font-size:13px;margin-bottom:1rem">資料載入失敗，請稍後再試</p><button onclick="window.location.reload()" style="padding:8px 20px;border:1px solid var(--bd);border-radius:8px;background:none;cursor:pointer;font-size:13px;color:var(--tx1)">重新載入</button></div>';
+  }
+};
+</script>
+</body>
+</html>
