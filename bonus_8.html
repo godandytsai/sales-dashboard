@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>獎金計算儀表板</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f7f6f3;--surf:#ffffff;--surf2:#f0efe9;
+  --tx1:#1a1a18;--tx2:#5a5a55;--tx3:#9a9a94;
+  --bd:#e0dfd8;--bd2:#c8c7bf;
+  --green:#059669;--green-bg:#d1fae5;--green-tx:#065f46;
+  --red:#dc2626;--red-bg:#fee2e2;--red-tx:#991b1b;
+  --amber:#d97706;--amber-bg:#fef3c7;--amber-tx:#92400e;
+  --blue:#2563eb;--blue-bg:#dbeafe;--blue-tx:#1e3a8a;
+  --accent:#1a1a18;
+}
+body{background:var(--bg);color:var(--tx1);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;min-height:100vh;}
+
+/* Header */
+.hdr{background:var(--accent);color:#fff;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:52px;}
+.hdr-title{font-size:15px;font-weight:500;letter-spacing:.02em;}
+.hdr-sub{font-size:11px;color:#aaa;}
+
+/* Main nav tabs */
+.main-nav{background:var(--surf);border-bottom:1px solid var(--bd);display:flex;padding:0 2rem;}
+.main-tab{padding:14px 20px;font-size:12px;font-weight:500;color:var(--tx3);border-bottom:2px solid transparent;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;}
+.main-tab.on{color:var(--tx1);border-bottom-color:var(--accent);}
+
+.content{padding:1.5rem 2rem;max-width:1200px;}
+
+/* Q selector + person tabs */
+.ctrl-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px;}
+.q-tabs{display:flex;gap:3px;}
+.q-tab{padding:5px 12px;border:1px solid var(--bd);border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;color:var(--tx2);background:var(--surf);letter-spacing:.03em;}
+.q-tab.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+.pe-tabs{display:flex;gap:4px;}
+.pe-tab{padding:6px 16px;border:1px solid var(--bd);border-radius:6px;cursor:pointer;font-size:12px;color:var(--tx2);background:var(--surf);}
+.pe-tab.on{background:var(--surf2);color:var(--tx1);font-weight:500;border-color:var(--bd2);}
+
+/* Summary cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
+.card{background:var(--surf);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;}
+.card-label{font-size:10px;color:var(--tx3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+.card-val{font-size:20px;font-weight:500;color:var(--tx1);}
+.card-val.green{color:var(--green);}
+.card-val.red{color:var(--red);}
+.card-val.amber{color:var(--amber);}
+.card-sub{font-size:11px;color:var(--tx3);margin-top:3px;}
+
+/* Table */
+.tbl-wrap{background:var(--surf);border:1px solid var(--bd);border-radius:10px;overflow:hidden;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{background:var(--surf2);color:var(--tx3);font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;text-align:right;border-bottom:1px solid var(--bd);white-space:nowrap;}
+thead th:first-child{text-align:left;min-width:180px;}
+tbody td{padding:7px 12px;border-bottom:1px solid var(--bg);text-align:right;color:var(--tx1);}
+tbody td:first-child{text-align:left;color:var(--tx2);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:var(--surf2);}
+tr.section-hdr td{background:var(--bg);color:var(--tx3);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:5px 12px;border-bottom:1px solid var(--bd);}
+tr.total-row td{font-weight:500;background:var(--surf2);border-top:1px solid var(--bd);border-bottom:none;}
+tr.mgmt-row td{color:var(--tx3);font-size:11px;background:var(--bg);}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;}
+.badge-pass{background:var(--green-bg);color:var(--green-tx);}
+.badge-fail{background:var(--red-bg);color:var(--red-tx);}
+.badge-warn{background:var(--amber-bg);color:var(--amber-tx);}
+.badge-info{background:var(--blue-bg);color:var(--blue-tx);}
+.bonus-amt{color:var(--green);font-weight:500;}
+.zero{color:var(--tx3);}
+
+/* Note */
+.note{font-size:11px;color:var(--tx3);margin-bottom:10px;}
+
+/* Loading */
+#loading{padding:4rem;text-align:center;color:var(--tx3);}
+
+/* Network layout */
+.net-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem;}
+.net-card{background:var(--surf);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;}
+.net-card-name{font-size:12px;font-weight:500;margin-bottom:8px;color:var(--tx1);}
+.net-card-row{display:flex;justify-content:space-between;font-size:11px;color:var(--tx2);margin-bottom:4px;}
+.net-card-row span:last-child{font-weight:500;color:var(--tx1);}
+.net-card-bonus{margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;}
+.net-card-bonus-label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;}
+.net-card-bonus-val{font-size:16px;font-weight:500;color:var(--green);}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">獎金計算儀表板</div>
+    <div class="hdr-sub" id="data-date">讀取中...</div>
+  </div>
+  <div style="font-size:11px;color:#888">資料來源：data.json</div>
+</div>
+
+<div class="main-nav">
+  <div class="main-tab on" onclick="switchMain('phy')">實體通路</div>
+  <div class="main-tab" onclick="switchMain('net')">網路通路</div>
+</div>
+
+<div id="loading">載入資料中...</div>
+
+<div id="p-phy" class="content" style="display:none">
+  <div class="ctrl-bar">
+    <div class="q-tabs">
+      <div class="q-tab on" onclick="switchQ(1)">Q1</div>
+      <div class="q-tab" onclick="switchQ(2)">Q2</div>
+      <div class="q-tab" onclick="switchQ(3)">Q3</div>
+      <div class="q-tab" onclick="switchQ(4)">Q4</div>
+    </div>
+    <div class="pe-tabs">
+      <div class="pe-tab on" onclick="switchPePhy('陳明祥')">陳明祥</div>
+      <div class="pe-tab" onclick="switchPePhy('廖大新')">廖大新</div>
+      <div class="pe-tab" onclick="switchPePhy('張宏榜')">張宏榜</div>
+    </div>
+  </div>
+  <div class="cards" id="phy-cards"></div>
+  <div class="note" id="phy-note"></div>
+  <div class="tbl-wrap"><table><thead id="phy-thead"></thead><tbody id="phy-tbody"></tbody></table></div>
+</div>
+
+<div id="p-net" class="content" style="display:none">
+  <div class="ctrl-bar">
+    <div class="q-tabs" id="net-q-tabs">
+      <div class="q-tab on" onclick="switchQNet(1)">Q1</div>
+      <div class="q-tab" onclick="switchQNet(2)">Q2</div>
+      <div class="q-tab" onclick="switchQNet(3)">Q3</div>
+      <div class="q-tab" onclick="switchQNet(4)">Q4</div>
+    </div>
+    <div class="pe-tabs">
+      <div class="pe-tab on" onclick="switchPeNet('雅蘋')">雅蘋（1區）</div>
+      <div class="pe-tab" onclick="switchPeNet('張蓒')">張蓒（2區）</div>
+      <div class="pe-tab" onclick="switchPeNet('劉軒睿')">劉軒睿（3區）</div>
+    </div>
+  </div>
+  <div id="net-cards"></div>
+  <div class="note" id="net-note"></div>
+  <div class="tbl-wrap"><table><thead id="net-thead"></thead><tbody id="net-tbody"></tbody></table></div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+var REPO_USER='godandytsai', REPO_NAME='sales-dashboard';
+var DATA_URL='https://raw.githubusercontent.com/'+REPO_USER+'/'+REPO_NAME+'/main/data.json';
+
+// ── BONUS CONSTANTS ─────────────────────────────────────────────
+var PHY_PE_VALID_REG={
+  '陳明祥':['彰投轄區','標案通路'],
+  '廖大新':['直營通路','北區通路','南區通路','中區通路','新竹區通路'],
+  '張宏榜':['台中轄區','中苗轄區','苗栗區通路'],
+};
+var PHY_PE_MONTHS={'陳明祥':[1,2,3],'廖大新':[1,2,3],'張宏榜':[2,3]};
+
+var BONUS_MA_REMAP={
+  '包寧安':{'尿片':'成褲','褲型':'成褲','黏貼型':'成褲','看護墊':'成褲','濕巾':'濕巾'},
+  '嬰舒寶':{'褲型':'嬰褲','黏貼型':'嬰褲'},
+  '櫻桃小丸子':{'褲型':'嬰褲','黏貼型':'嬰褲','禮箱':'嬰褲','衛生紙':'衛生紙','濕巾':'濕巾'},
+  '胖虎':{'礦砂貓砂':'貓砂','豆腐貓砂':'貓砂','寵物濕巾':'寵物濕巾','周邊商品':'周邊商品'},
+  'P寶':{'看護墊':'看護墊'},
+  '幫寶適':{'褲型':'他牌嬰褲&他牌濕巾','黏貼型':'他牌嬰褲&他牌濕巾'},
+  '大王':{'褲型':'他牌嬰褲&他牌濕巾','黏貼型':'他牌嬰褲&他牌濕巾'},
+  '滿意寶寶':{'褲型':'他牌嬰褲&他牌濕巾'},
+  '小白兔暖暖包':{'手握':'清潔用品','貼式':'清潔用品'},
+  'P&G':{'清潔用品':'清潔用品'},
+  '得意':{'清潔用品':'清潔用品','衛生紙':'清潔用品','贈品':'清潔用品'},
+  '橘子工坊':{'清潔用品':'清潔用品'},
+  '五月花':{'衛生紙':'清潔用品'},
+  '生活用品/五金':{'個人潔淨保養':'其他','消耗品':'其他','清潔用品':'其他','衛生紙':'其他'},
+  '醫療器材':{'個人潔淨保養':'其他','清潔用品':'其他','醫療器材':'其他'},
+};
+var BONUS_CA_REMAP={
+  '幫寶適':'平行輸入&其他','大王':'平行輸入&其他','滿意寶寶':'平行輸入&其他',
+  'P&G':'P&G+花王+暖暖包','小白兔暖暖包':'P&G+花王+暖暖包',
+  '五月花':'五月花+得意+橘子工坊','得意':'五月花+得意+橘子工坊','橘子工坊':'五月花+得意+橘子工坊',
+  '生活用品/五金':'其他','醫療器材':'其他',
+};
+var BONUS_SE_REMAP={
+  '非經銷成褲':'成褲|日本ACTY成褲&他牌成褲|非經銷成褲',
+  '非經銷嬰褲':'他牌嬰褲&他牌濕巾|平行輸入&其他|非經銷嬰褲',
+  '平行輸入其他':'清潔用品|P&G+花王+暖暖包|平行輸入其他',
+  '永豐餘':'清潔用品|五月花+得意+橘子工坊|永豐餘',
+  '其他':'其他|其他|其他',
+};
+var PHY_RATES={
+  '成褲|包寧安|自有品牌成褲':{threshold:true,嬰藥:0.025,安養:0.015,中區:0.0125,非中區:0.0075,標案:0},
+  '濕巾|包寧安|自有品牌成褲':{threshold:true,嬰藥:0.025,安養:0.025,中區:0.0125,非中區:0.0125,標案:0.01},
+  '濕巾|櫻桃小丸子|自有品牌嬰褲':{threshold:true,嬰藥:0.025,安養:0.025,中區:0.0125,非中區:0.0125,標案:0},
+};
+var PHY_DEFAULT={threshold:false,嬰藥:0.018,安養:0.018,中區:0.009,非中區:0.009,標案:0.01};
+var PHY_LOW={threshold:false,嬰藥:0.006,安養:0.006,中區:0.003,非中區:0.003,標案:0};
+var PHY_ROWS=[
+  ['成褲','包寧安','自有品牌成褲','包寧安成褲'],
+  ['濕巾','包寧安','自有品牌成褲','包寧安濕巾'],
+  ['衛生棉','櫻桃小丸子/五月私語','自有品牌嬰褲','衛生棉'],
+  ['嬰褲','嬰舒寶','自有品牌嬰褲','嬰舒寶嬰褲'],
+  ['嬰褲','櫻桃小丸子','自有品牌嬰褲','櫻桃小丸子嬰褲'],
+  ['衛生紙','櫻桃小丸子','自有品牌嬰褲','櫻桃小丸子衛生紙'],
+  ['濕巾','櫻桃小丸子','自有品牌嬰褲','櫻桃小丸子濕巾'],
+  ['看護墊','P寶','寵物用品','P寶看護墊'],
+  ['寵物濕巾','胖虎','寵物用品','胖虎寵物濕巾'],
+  ['貓砂','胖虎','寵物用品','胖虎貓砂'],
+  ['周邊商品','胖虎','寵物用品','胖虎周邊'],
+  ['成褲','日本ACTY成褲&他牌成褲','非經銷成褲','非經銷成褲'],
+  ['他牌嬰褲&他牌濕巾','平行輸入&其他','非經銷嬰褲','非經銷嬰褲'],
+  ['清潔用品','P&G+花王+暖暖包','平行輸入其他','平行輸入其他'],
+  ['清潔用品','五月花+得意+橘子工坊','永豐餘','永豐餘'],
+  ['其他','其他','其他','其他'],
+];
+var BONUS_CH_MAP={
+  '嬰兒房':'嬰藥','藥局':'嬰藥','藥局/嬰兒房':'嬰藥','機關福利社':'嬰藥',
+  '員工購買':'嬰藥','舒寶員工購買':'嬰藥',
+  '安養院':'安養','醫院':'安養','醫院/安養院':'安養','醫療器材行':'安養',
+  '盤商':'盤商','經銷商':'盤商',
+};
+var BONUS_RETAIL={'一家超級市場':'嬰藥','長阜有限公司':'安養','八八平價商店':'安養'};
+
+// Network
+var NET_TARGET_SE={'自有品牌成褲':1,'自有品牌嬰褲':1,'寵物用品':1};
+var NET_RATES={
+  '成褲|包寧安|自有品牌成褲':0.0104,'濕巾|包寧安|自有品牌成褲':0.0104,
+  '濕巾|櫻桃小丸子|自有品牌嬰褲':0.0104,
+  '嬰褲|嬰舒寶|自有品牌嬰褲':0.0075,'嬰褲|櫻桃小丸子|自有品牌嬰褲':0.0075,
+  '衛生紙|櫻桃小丸子|自有品牌嬰褲':0.0075,'衛生棉|櫻桃小丸子/五月私語|自有品牌嬰褲':0.0075,
+  '看護墊|P寶|寵物用品':0.0075,'寵物濕巾|胖虎|寵物用品':0.0075,
+  '貓砂|胖虎|寵物用品':0.0075,'周邊商品|胖虎|寵物用品':0.0075,
+};
+var NET_LOW=0.0025;
+var NET_SE_REMAP_KEYS={'非經銷成褲':1,'非經銷嬰褲':1,'平行輸入其他':1,'永豐餘':1,'其他':1};
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function phyGetKey(rawCa,rawMa,rawSe){
+  if(BONUS_SE_REMAP[rawSe]) return BONUS_SE_REMAP[rawSe];
+  var ma=(BONUS_MA_REMAP[rawCa]&&BONUS_MA_REMAP[rawCa][rawMa])||rawMa;
+  if(rawSe==='自有品牌成褲'||rawSe==='自有品牌嬰褲'||rawSe==='寵物用品') return ma+'|'+rawCa+'|'+rawSe;
+  return ma+'|'+(BONUS_CA_REMAP[rawCa]||rawCa)+'|'+rawSe;
+}
+function phyGetCh(r,pe){
+  var ch=(r.ch||'').trim(),rawCh=(r.rawCh||'').trim(),reg=(r.reg||'').trim();
+  if(reg==='標案通路') return '標案';
+  if(pe==='廖大新'&&reg==='中區通路') return '中區';
+  for(var k in BONUS_RETAIL){if(rawCh.indexOf(k)>=0||ch.indexOf(k)>=0) return BONUS_RETAIL[k];}
+  if(pe==='陳明祥'&&(ch==='超市通路'||rawCh==='超市通路')) return '嬰藥';
+  if(ch==='員工購買'||rawCh==='員工購買'||rawCh==='舒寶員工購買') return '嬰藥';
+  var m=BONUS_CH_MAP[rawCh]||'';
+  if(m==='盤商') return '非中區';
+  if(m) return m;
+  if(ch==='嬰藥') return '嬰藥';
+  if(ch==='安養&醫材'||ch==='安養') return '安養';
+  if(ch==='盤商(經銷商)'||ch==='盤商') return '非中區';
+  if(rawCh==='零售客戶') return '嬰藥';
+  return '其他';
+}
+function phyGetRule(key){
+  if(PHY_RATES[key]) return PHY_RATES[key];
+  var se=key.split('|')[2];
+  if(se==='自有品牌嬰褲'||se==='寵物用品') return PHY_DEFAULT;
+  return PHY_LOW;
+}
+function netGetKey(rawCa,rawMa,rawSe){
+  if(NET_SE_REMAP_KEYS[rawSe]) return rawSe;
+  var ma=(BONUS_MA_REMAP[rawCa]&&BONUS_MA_REMAP[rawCa][rawMa])||rawMa;
+  if(rawSe==='自有品牌成褲'||rawSe==='自有品牌嬰褲'||rawSe==='寵物用品') return ma+'|'+rawCa+'|'+rawSe;
+  return ma+'|'+(BONUS_CA_REMAP[rawCa]||rawCa)+'|'+rawSe;
+}
+function netGetMult(achieve){
+  if(achieve>=0.9995) return Math.min(achieve,1.10);
+  if(achieve>=0.8995) return 0.70;
+  if(achieve>=0.7995) return 0.35;
+  return 0.0;
+}
+function qMonths(q){return{1:[1,2,3],2:[4,5,6],3:[7,8,9],4:[10,11,12]}[q];}
+var $=function(id){return document.getElementById(id);};
+function fmt(v){return v?'$'+Math.round(v).toLocaleString():'—';}
+function fmtPct(v){return (v*100).toFixed(2)+'%';}
+
+// ── STATE ────────────────────────────────────────────────────────
+var SALES=[], QUOTA={}, QMETA={};
+var curMain='phy', curQ=1, curPePhy='陳明祥', curQNet=1, curPeNet='雅蘋';
+
+// ── DATA LOAD ────────────────────────────────────────────────────
+async function loadData(){
+  function parseData(raw){
+    var F=raw.F||[], R=raw.R||[];
+    SALES=R.map(function(row){
+      var o={};
+      F.forEach(function(f,i){o[f]=row[i];});
+      return o;
+    });
+    QUOTA=raw.q||{};
+    QMETA=raw.qm||{};
+    $('data-date').textContent='更新：'+(QMETA.date||'—')+' | 檔案：'+(QMETA.file||'—');
+    $('loading').style.display='none';
+    render();
+  }
+
+  // 方法1: raw.githubusercontent.com
+  try{
+    $('loading').textContent='載入資料中... (1/3)';
+    var resp=await fetch(DATA_URL+'?t='+Date.now(),{signal:AbortSignal.timeout(8000)});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    return parseData(await resp.json());
+  }catch(e){ console.warn('方法1失敗:',e.message); }
+
+  // 方法2: GitHub API（公開，不需要 token）
+  try{
+    $('loading').textContent='載入資料中... (2/3)';
+    var apiUrl='https://api.github.com/repos/godandytsai/sales-dashboard/contents/data.json';
+    var resp2=await fetch(apiUrl,{
+      headers:{'Accept':'application/vnd.github.v3+json'},
+      signal:AbortSignal.timeout(10000)
+    });
+    if(!resp2.ok)throw new Error('API HTTP '+resp2.status);
+    var meta=await resp2.json();
+    var jsonStr=decodeURIComponent(escape(atob(meta.content.replace(/\n/g,''))));
+    return parseData(JSON.parse(jsonStr));
+  }catch(e){ console.warn('方法2失敗:',e.message); }
+
+  // 方法3: jsDelivr CDN
+  try{
+    $('loading').textContent='載入資料中... (3/3)';
+    var cdnUrl='https://cdn.jsdelivr.net/gh/godandytsai/sales-dashboard@main/data.json?t='+Date.now();
+    var resp3=await fetch(cdnUrl,{signal:AbortSignal.timeout(10000)});
+    if(!resp3.ok)throw new Error('CDN HTTP '+resp3.status);
+    return parseData(await resp3.json());
+  }catch(e){ console.warn('方法3失敗:',e.message); }
+
+  $('loading').textContent='資料載入失敗，請稍後再試';
+}
+
+// ── RENDER CONTROLLER ────────────────────────────────────────────
+function render(){
+  if(curMain==='phy'){
+    $('p-phy').style.display='block';
+    $('p-net').style.display='none';
+    renderPhy();
+  } else {
+    $('p-phy').style.display='none';
+    $('p-net').style.display='block';
+    renderNet();
+  }
+}
+
+// ── PHYSICAL CHANNEL ─────────────────────────────────────────────
+function renderPhy(){
+  var pe=curPePhy, q=curQ;
+  var months=pe==='張宏榜'&&q===1?[2,3]:qMonths(q);
+  var validRegs=PHY_PE_VALID_REG[pe]||[];
+  var THRESHOLD=0.7995;
+
+  // Build quota
+  var Q={};
+  var peQ=QUOTA[pe]||{};
+  Object.keys(peQ).forEach(function(reg){
+    var ok=validRegs.some(function(v){return reg.indexOf(v)>=0;});
+    if(!ok) return;
+    Object.keys(peQ[reg]).forEach(function(ch){
+      if(!ch) return;
+      var qh=(peQ[reg][ch]||{}).qh||{};
+      Object.keys(qh).forEach(function(se){
+        Object.keys(qh[se]).forEach(function(ca){
+          var mats=(qh[se][ca]||{}).mats||{};
+          Object.keys(mats).forEach(function(rawMa){
+            var v=0; months.forEach(function(mo){v+=(mats[rawMa][String(mo)]||0);});
+            if(v<=0) return;
+            var key=phyGetKey(ca,rawMa,se);
+            Q[key]=(Q[key]||0)+v;
+          });
+        });
+      });
+    });
+  });
+
+  // Build sales
+  var S={};
+  SALES.forEach(function(r){
+    if(r.pe!==pe) return;
+    if(months.indexOf(r.mo)<0) return;
+    if(r.t!=='出貨'&&r.t!=='出退') return;
+    var key=phyGetKey(r.ca||'',r.rawMa||r.ma||'',r.se||'');
+    var chg=phyGetCh(r,pe);
+    if(!S[key]) S[key]={};
+    if(!S[key][chg]) S[key][chg]={ship:0,ret:0};
+    if(r.t==='出貨') S[key][chg].ship+=r.amt||0;
+    else S[key][chg].ret+=Math.abs(r.amt||0);
+  });
+
+  // Calculate per row
+  var rows=[]; var total_bonus=0; var total_quota=0; var total_net=0; var total_ship=0; var total_ret=0; var total_sup=0;
+  PHY_ROWS.forEach(function(row){
+    var ma=row[0],ca=row[1],se=row[2],label=row[3];
+    var key=ma+'|'+ca+'|'+se;
+    var quota=Q[key]||0;
+    var chData=S[key]||{};
+    var ship_t=0,ret_t=0,super_t=0,ch_bonus=0;
+    Object.keys(chData).forEach(function(chg){
+      var v=chData[chg];
+      var s=v.ship,r=v.ret,sup=Math.max(0,r-s*0.01);
+      ship_t+=s; ret_t+=r; super_t+=sup;
+    });
+    var net=Math.max(0,ship_t-ret_t-super_t);
+    var achieve=quota>0?net/quota:0;
+    var rule=phyGetRule(key);
+    var qualified=!rule.threshold||achieve>=THRESHOLD;
+    Object.keys(chData).forEach(function(chg){
+      var v=chData[chg],s=v.ship,r=v.ret,sup=Math.max(0,r-s*0.01);
+      var cn=Math.max(0,s-r-sup),rate=rule[chg]||0;
+      if(qualified&&rate) ch_bonus+=cn*rate;
+    });
+    total_bonus+=ch_bonus;
+    if(quota===0&&ship_t===0&&ret_t===0&&ch_bonus===0) return;
+    // Build rate description
+    var rateDesc='';
+    if(rule.threshold){
+      var rates=[];
+      if(rule['嬰藥']) rates.push('嬰藥'+(rule['嬰藥']*100).toFixed(2)+'%');
+      if(rule['安養']) rates.push('安養'+(rule['安養']*100).toFixed(2)+'%');
+      if(rule['中區']) rates.push('中區'+(rule['中區']*100).toFixed(2)+'%');
+      if(rule['非中區']) rates.push('非中區'+(rule['非中區']*100).toFixed(2)+'%');
+      if(rule['標案']) rates.push('標案'+(rule['標案']*100).toFixed(2)+'%');
+      rateDesc=rates.join(' / ');
+    } else {
+      var rates=[];
+      if(rule['嬰藥']) rates.push('嬰藥'+(rule['嬰藥']*100).toFixed(2)+'%');
+      if(rule['安養']) rates.push('安養'+(rule['安養']*100).toFixed(2)+'%');
+      if(rule['中區']) rates.push('中區'+(rule['中區']*100).toFixed(2)+'%');
+      if(rule['非中區']) rates.push('非中區'+(rule['非中區']*100).toFixed(2)+'%');
+      // deduplicate
+      var unique=[]; rates.forEach(function(r){if(unique.indexOf(r)<0)unique.push(r);});
+      rateDesc=unique.join(' / ');
+    }
+    rows.push({label:label,threshold:rule.threshold,quota:quota,ship:ship_t,ret:ret_t,sup:super_t*2,net:net,achieve:achieve,qualified:qualified,bonus:ch_bonus,rateDesc:rateDesc});
+    total_quota+=quota; total_ship+=ship_t; total_ret+=ret_t; total_sup+=super_t*2; total_net+=net;
+  });
+
+  // Cards
+  var achieve_total=total_quota>0?total_net/total_quota:0;
+  var achCls=achieve_total>=1?'green':achieve_total>=0.8?'amber':'red';
+  $('phy-cards').innerHTML=
+    '<div class="card"><div class="card-label">配額</div><div class="card-val">'+fmt(total_quota)+'</div>'+(pe==='張宏榜'&&q===1?'<div class="card-sub">2-3月</div>':'')+'</div>'+
+    '<div class="card"><div class="card-label">淨業績</div><div class="card-val">'+fmt(total_net)+'</div></div>'+
+    '<div class="card"><div class="card-label">總達成率</div><div class="card-val '+achCls+'">'+fmtPct(achieve_total)+'</div></div>'+
+    '<div class="card"><div class="card-label">季獎金合計</div><div class="card-val green">'+fmt(total_bonus)+'</div></div>';
+
+  $('phy-note').textContent=(pe==='張宏榜'&&q===1?'張宏榜 2/1 到職，Q1 配額與業績均採 2-3 月。':'')+' * 標記品項需達成率 ≥ 79.95% 才計算獎金。';
+
+  // Table
+  $('phy-thead').innerHTML='<tr><th>品項</th><th>配額</th><th>出貨金額</th><th>出退金額</th><th>超退×2</th><th>淨出貨金額</th><th>達成率</th><th>抽成%</th><th>獎金</th></tr>';
+  var tb='';
+  rows.forEach(function(r){
+    var achBadge='';
+    if(r.threshold){
+      var cls=r.achieve>=THRESHOLD?'badge-pass':'badge-fail';
+      achBadge='<span class="badge '+cls+'">'+fmtPct(r.achieve)+'</span>';
+    } else {
+      achBadge=r.quota>0?fmtPct(r.achieve):'—';
+    }
+    var lbl=r.threshold?r.label+' *':r.label;
+    var bonCell=r.bonus>0?'<span class="bonus-amt">'+fmt(r.bonus)+'</span>':'<span class="zero">—</span>';
+    var rateCell=r.rateDesc?'<span style="color:var(--tx3);font-size:11px">'+r.rateDesc+'</span>':'<span class="zero">—</span>';
+    tb+='<tr><td>'+lbl+'</td><td>'+(r.quota?fmt(r.quota):'<span class="zero">—</span>')+'</td>'
+      +'<td>'+(r.ship?fmt(r.ship):'<span class="zero">—</span>')+'</td>'
+      +'<td>'+(r.ret?fmt(r.ret):'<span class="zero">—</span>')+'</td>'
+      +'<td>'+(r.sup?fmt(r.sup):'<span class="zero">—</span>')+'</td>'
+      +'<td>'+(r.net?fmt(r.net):'<span class="zero">—</span>')+'</td>'
+      +'<td>'+achBadge+'</td><td>'+rateCell+'</td><td>'+bonCell+'</td></tr>';
+  });
+  tb+='<tr class="total-row">'
+    +'<td>合計</td>'
+    +'<td>'+(total_quota?'$'+Math.round(total_quota).toLocaleString():'—')+'</td>'
+    +'<td>'+(total_ship?'$'+Math.round(total_ship).toLocaleString():'—')+'</td>'
+    +'<td>'+(total_ret?'$'+Math.round(total_ret).toLocaleString():'—')+'</td>'
+    +'<td>'+(total_sup?'$'+Math.round(total_sup).toLocaleString():'—')+'</td>'
+    +'<td>'+(total_net?'$'+Math.round(total_net).toLocaleString():'—')+'</td>'
+    +'<td></td><td></td>'
+    +'<td><span class="bonus-amt">$'+Math.round(total_bonus).toLocaleString()+'</span></td>'
+    +'</tr>';
+  $('phy-tbody').innerHTML=tb;
+}
+
+// ── NETWORK CHANNEL ───────────────────────────────────────────────
+function renderNet(){
+  var q=curQNet;
+  var months=qMonths(q);
+  var NET_PES=[
+    {pe:'雅蘋',  sName:'蔡汶真', sReg:'網路通路-1區', qName:'雅蘋',   qReg:'網路通路-1區'},
+    {pe:'張蓒',  sName:'劉軒睿', sReg:'網路通路-2區', qName:'張蓒',   qReg:'網路通路-2區'},
+    {pe:'劉軒睿',sName:'劉軒睿', sReg:'網路通路-3區', qName:'劉軒睿', qReg:'網路通路-3區'},
+  ];
+  var curPe=curPeNet;
+
+  var results={};
+  NET_PES.forEach(function(p){
+    // Quota (TARGET_SE only)
+    var quota=0;
+    var peQ=QUOTA[p.qName]||{};
+    Object.keys(peQ).forEach(function(reg){
+      if(reg.indexOf(p.qReg)<0) return;
+      Object.keys(peQ[reg]).forEach(function(ch){
+        var qh=(peQ[reg][ch]||{}).qh||{};
+        Object.keys(qh).forEach(function(se){
+          if(!NET_TARGET_SE[se]) return;
+          Object.keys(qh[se]).forEach(function(ca){
+            var mats=(qh[se][ca]||{}).mats||{};
+            Object.keys(mats).forEach(function(rawMa){
+              var v=0; months.forEach(function(mo){v+=(mats[rawMa][String(mo)]||0);});
+              quota+=v;
+            });
+          });
+        });
+      });
+    });
+
+    // Sales
+    var by_lbl={};
+    SALES.forEach(function(r){
+      if(r.pe!==p.pe&&!(p.sName===r.pe&&r.reg===p.sReg)) return;
+      // Filter by actual reg for 劉軒睿 split
+      if(r.reg!==p.sReg) return;
+      if(r.t!=='出貨'&&r.t!=='出退') return;
+      if(months.indexOf(r.mo)<0) return;
+      if((r.se||'')==='費用') return;
+      var rawSe=r.se||'', rawCa=r.ca||'', rawMa=r.rawMa||r.ma||'';
+      var key=netGetKey(rawCa,rawMa,rawSe);
+      var lbl=NET_TARGET_SE[rawSe]?rawSe+' > '+rawCa+' > '+((BONUS_MA_REMAP[rawCa]&&BONUS_MA_REMAP[rawCa][rawMa])||rawMa):rawSe;
+      by_lbl[lbl]=by_lbl[lbl]||{key:key,ship:0,ret:0};
+      if(r.t==='出貨') by_lbl[lbl].ship+=r.amt||0;
+      else by_lbl[lbl].ret+=Math.abs(r.amt||0);
+    });
+
+    // Net (no super-return for network)
+    var net_ach=0, pre_bonus=0, total_net=0;
+    Object.keys(by_lbl).forEach(function(lbl){
+      var v=by_lbl[lbl], net=v.ship-v.ret;
+      total_net+=net;
+      var se_base=lbl.split(' > ')[0];
+      if(NET_TARGET_SE[se_base]) net_ach+=net;
+      pre_bonus+=net*(NET_RATES[v.key]||NET_LOW);
+    });
+    var achieve=quota>0?net_ach/quota:0;
+    var mult=netGetMult(achieve);
+    results[p.pe]={quota:quota,net_ach:net_ach,achieve:achieve,mult:mult,
+      pre:pre_bonus,final:pre_bonus*mult,total_net:total_net,by_lbl:by_lbl};
+  });
+
+  // Mgmt bonus
+  var ya=results['雅蘋'].achieve, zh=results['張蓒'].achieve;
+  var mgmt=ya>=1.10&&zh>=1.10?15000:(ya>=1.00&&zh>=1.00?10000:0);
+  results['劉軒睿'].mgmt=mgmt;
+
+  // Single person summary cards
+  var r=results[curPe];
+  var p=NET_PES.filter(function(x){return x.pe===curPe;})[0];
+  var achCls=r.achieve>=1?'badge-pass':r.achieve>=0.90?'badge-warn':r.achieve>=0.80?'badge-info':'badge-fail';
+  var total=r.final+(r.mgmt||0);
+  $('net-cards').innerHTML=
+    '<div class="cards">'+
+    '<div class="card"><div class="card-label">達成配額</div><div class="card-val">'+fmt(r.quota)+'</div></div>'+
+    '<div class="card"><div class="card-label">達成業績</div><div class="card-val">'+fmt(r.net_ach)+'</div></div>'+
+    '<div class="card"><div class="card-label">全品項淨業績</div><div class="card-val">'+fmt(r.total_net)+'</div></div>'+
+    '<div class="card"><div class="card-label">達成率</div><div class="card-val '+(r.achieve>=1?'green':r.achieve>=0.8?'amber':'red')+'">'+fmtPct(r.achieve)+'</div>'+
+      '<div class="card-sub">乘數：'+(r.mult===1.10?'1.10（上限）':r.mult.toFixed(2))+'</div></div>'+
+    '</div>'+
+    (curPe==='劉軒睿'?
+      '<div class="cards" style="margin-top:8px">'+
+      '<div class="card"><div class="card-label">個人獎金</div><div class="card-val green">'+fmt(r.final)+'</div></div>'+
+      '<div class="card"><div class="card-label">管理獎金</div><div class="card-val '+(mgmt>0?'green':'')+'">'+fmt(mgmt)+'</div>'+
+        '<div class="card-sub">'+(ya>=1.10&&zh>=1.10?'雅蘋＋張蓒均達110%':ya>=1.00&&zh>=1.00?'雅蘋＋張蓒均達100%':'雅蘋'+fmtPct(ya)+'／張蓒'+fmtPct(zh))+'</div></div>'+
+      '<div class="card"><div class="card-label">合計獎金</div><div class="card-val green">'+fmt(total)+'</div></div>'+
+      '<div class="card"></div>'+
+      '</div>'
+    :'<div class="cards" style="margin-top:8px">'+
+      '<div class="card"><div class="card-label">季獎金合計</div><div class="card-val green">'+fmt(r.final)+'</div></div>'+
+      '<div class="card"></div><div class="card"></div><div class="card"></div>'+
+      '</div>');
+
+  $('net-note').textContent='達成率以自有品牌成褲＋嬰褲＋寵物用品加總計算（不計超退，不含索樣）';
+
+  // Detail table - single person
+  $('net-thead').innerHTML='<tr><th>品項</th><th>出貨金額</th><th>退貨金額</th><th>淨業績</th><th>抽成%</th><th>達成配額</th><th>達成業績</th><th>達成率</th><th>乘數</th><th>獎金</th></tr>';
+  var tb='';
+  Object.keys(r.by_lbl).sort().forEach(function(lbl){
+    var v=r.by_lbl[lbl], net=v.ship-v.ret;
+    if(v.ship===0&&v.ret===0) return;
+    var rate=(NET_RATES[v.key]||NET_LOW)*100;
+    var rowBonus=net*((NET_RATES[v.key]||NET_LOW))*r.mult;
+    tb+='<tr><td>'+lbl+'</td>'
+      +'<td>'+fmt(v.ship)+'</td><td>'+fmt(v.ret)+'</td><td>'+fmt(net)+'</td>'
+      +'<td>'+rate.toFixed(2)+'%</td>'
+      +'<td class="zero">—</td><td class="zero">—</td><td class="zero">—</td><td class="zero">—</td>'
+      +'<td>'+(rowBonus>0?'<span class="bonus-amt">'+fmt(rowBonus)+'</span>':'<span class="zero">—</span>')+'</td></tr>';
+  });
+  // Compute ship/ret totals for network
+  var net_total_ship=0, net_total_ret=0, net_total_net=0;
+  Object.keys(r.by_lbl).forEach(function(lbl){
+    var v=r.by_lbl[lbl];
+    net_total_ship+=v.ship; net_total_ret+=v.ret; net_total_net+=(v.ship-v.ret);
+  });
+  var achBadge='<span class="badge '+achCls+'">'+fmtPct(r.achieve)+'</span>';
+  tb+='<tr class="total-row"><td>合計</td>'
+    +'<td>'+(net_total_ship?'$'+Math.round(net_total_ship).toLocaleString():'—')+'</td>'
+    +'<td>'+(net_total_ret?'$'+Math.round(net_total_ret).toLocaleString():'—')+'</td>'
+    +'<td>'+(net_total_net?'$'+Math.round(net_total_net).toLocaleString():'—')+'</td>'
+    +'<td></td>'
+    +'<td>'+fmt(r.quota)+'</td><td>'+fmt(r.net_ach)+'</td>'
+    +'<td>'+achBadge+'</td>'
+    +'<td>'+(r.mult===1.10?'1.10×':r.mult.toFixed(2)+'×')+'</td>'
+    +'<td><span class="bonus-amt">'+fmt(r.final)+'</span></td></tr>';
+  if(curPe==='劉軒睿'){
+    var mgmtNote=ya>=1.10&&zh>=1.10?'雅蘋＋張蓒均達110%，管理獎金 $15,000'
+      :ya>=1.00&&zh>=1.00?'雅蘋＋張蓒均達100%，管理獎金 $10,000'
+      :'雅蘋'+fmtPct(ya)+'、張蓒'+fmtPct(zh)+'，兩人須各自達100%才有管理獎金';
+    tb+='<tr class="mgmt-row"><td colspan="9">管理獎金：'+mgmtNote+'</td>'
+      +'<td>'+(mgmt>0?'<span class="bonus-amt">$'+mgmt.toLocaleString()+'</span>':'<span class="zero">$0</span>')+'</td></tr>';
+    tb+='<tr class="total-row"><td>劉軒睿總獎金</td><td colspan="8"></td>'
+      +'<td><span class="bonus-amt">'+fmt(total)+'</span></td></tr>';
+  }
+  $('net-tbody').innerHTML=tb;
+}
+
+// ── SWITCH HANDLERS ───────────────────────────────────────────────
+function switchMain(t){
+  curMain=t;
+  document.querySelectorAll('.main-tab').forEach(function(el,i){el.classList.toggle('on',['phy','net'][i]===t);});
+  if(SALES.length) render();
+}
+function switchQ(q){
+  curQ=q;
+  document.querySelectorAll('.q-tab').forEach(function(el,i){el.classList.toggle('on',i+1===q);});
+  if(SALES.length) renderPhy();
+}
+function switchPeNet(pe){
+  curPeNet=pe;
+  document.querySelectorAll('#p-net .pe-tab').forEach(function(el,i){
+    el.classList.toggle('on',['雅蘋','張蓒','劉軒睿'][i]===pe);
+  });
+  if(SALES.length) renderNet();
+}
+function switchQNet(q){
+  curQNet=q;
+  document.querySelectorAll('#net-q-tabs .q-tab').forEach(function(el,i){el.classList.toggle('on',i+1===q);});
+  if(SALES.length) renderNet();
+}
+function switchPePhy(pe){
+  curPePhy=pe;
+  document.querySelectorAll('.pe-tab').forEach(function(el,i){el.classList.toggle('on',['陳明祥','廖大新','張宏榜'][i]===pe);});
+  if(SALES.length) renderPhy();
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
