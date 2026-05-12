@@ -204,6 +204,37 @@ tr:last-child td{border-bottom:none}
   .kpi-v{font-size:1.2rem;}
 }
 </style>
+<script>
+const _SB_URL = 'https://trxmfvosyfnlidmyelzs.supabase.co'
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyeG1mdm9zeWZubGlkbXllbHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTU5NDUsImV4cCI6MjA5Mzc5MTk0NX0.auFOS6ZtcmhsXMWBctFtRr-KnKmGDh4E5jhnk79Vbx0'
+
+async function loadFromSupabase() {
+  try {
+    let allRows = [], from = 0
+    const BATCH = 1000
+    while (true) {
+      const resp = await fetch(
+        `${_SB_URL}/rest/v1/sales_order?select=*&order=order_date.asc&limit=${BATCH}&offset=${from}`,
+        { headers: { 'apikey': _SB_KEY, 'Authorization': 'Bearer ' + _SB_KEY }, signal: AbortSignal.timeout(15000) }
+      )
+      if (!resp.ok) throw new Error('HTTP ' + resp.status)
+      const batch = await resp.json()
+      if (!batch.length) break
+      allRows = allRows.concat(batch)
+      if (batch.length < BATCH) break
+      from += BATCH
+    }
+    if (!allRows.length) return false
+    const map = {}
+    for (const r of allRows) {
+      map[r.id] = { id:r.id, t:r.order_type, y:r.year, mo:r.month, day:r.day, pe:r.sales_rep, amt:r.amount, se:r.series, ca:r.category, quotaCa:r.quota_category, ma:r.material, rawMa:r.raw_material, ch:r.channel, rawCh:r.raw_channel, reg:r.region, maGroup:r.material_group, qty:r.quantity }
+    }
+    try { localStorage.setItem('sd_sales', JSON.stringify(map)) } catch(e) { window._SB_SALES_MAP = map }
+    console.log('✅ Supabase 載入：' + allRows.length + ' 筆')
+    return map
+  } catch(e) { console.warn('Supabase 失敗：', e.message); return false }
+}
+</script>
 </head>
 <body>
 <div id="loading"><div class="spin"></div><p id="lmsg">讀取中...</p></div>
@@ -420,6 +451,18 @@ async function loadData(){
     } catch(e) {
       console.warn('Supabase 方法失敗:', e.message);
     }
+  // ── Supabase 優先 ──
+    try {
+      showL('載入資料... 從雲端讀取');
+      var sbMap = await loadFromSupabase();
+      if (sbMap && Object.keys(sbMap).length > 0) {
+        SALES_MAP = sbMap;
+        var q = lsGet(K.q);
+        if (q) QUOTA = q;
+        log('✅ 從 Supabase 載入 ' + Object.keys(sbMap).length + ' 筆');
+        return true;
+      }
+    } catch(e) { console.warn('Supabase 失敗:', e.message); }
   // 嘗試解析並存入 localStorage
   function parseAndStore(data){
     var F=data.salesFields||data.F;
