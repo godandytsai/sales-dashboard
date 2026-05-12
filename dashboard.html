@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>業務銷售儀表板</title>
+<script src="supabase-loader.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -405,7 +406,20 @@ function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
 
 async function loadData(){
   showL('載入資料...');
-
+// ── 方法0: 從 Supabase 讀（最優先）────────────────────
+    try {
+      showL('載入資料... 從雲端讀取');
+      var sbMap = await loadFromSupabase();
+      if (sbMap && Object.keys(sbMap).length > 0) {
+        SALES_MAP = sbMap;
+        var q = lsGet(K.q);
+        if (q) QUOTA = q;
+        log('✅ 從 Supabase 載入 ' + Object.keys(sbMap).length + ' 筆');
+        return true;
+      }
+    } catch(e) {
+      console.warn('Supabase 方法失敗:', e.message);
+    }
   // 嘗試解析並存入 localStorage
   function parseAndStore(data){
     var F=data.salesFields||data.F;
