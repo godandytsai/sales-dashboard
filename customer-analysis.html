@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客戶分析</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'PingFang TC', 'Helvetica Neue', sans-serif; background: #f5f4f0; color: #1a1a1a; font-size: 14px; }
+
+.top-bar { background: #fff; border-bottom: 1px solid #e8e6e0; padding: 0 24px; display: flex; align-items: center; gap: 20px; height: 52px; position: sticky; top: 0; z-index: 100; }
+.top-bar h1 { font-size: 16px; font-weight: 600; }
+.back-btn { font-size: 13px; color: #666; text-decoration: none; }
+.back-btn:hover { color: #1a1a1a; }
+.sep { color: #ccc; }
+
+.toolbar { background: #fff; border-bottom: 1px solid #e8e6e0; padding: 10px 24px; display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.toolbar label { display: block; font-size: 11px; color: #999; margin-bottom: 4px; letter-spacing: .3px; }
+.toolbar select { height: 32px; border: 1px solid #ddd; border-radius: 6px; padding: 0 10px; font-size: 13px; background: #fff; color: #1a1a1a; outline: none; }
+.toolbar select:focus { border-color: #4a7c59; }
+
+.search-wrap { position: relative; }
+.search-wrap input { height: 32px; border: 1px solid #ddd; border-radius: 6px; padding: 0 10px; font-size: 13px; width: 240px; outline: none; background: #fff; color: #1a1a1a; }
+.search-wrap input:focus { border-color: #4a7c59; }
+.search-dropdown { position: absolute; top: 36px; left: 0; width: 340px; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.1); z-index: 999; max-height: 300px; overflow-y: auto; display: none; }
+.search-dropdown.open { display: block; }
+.dd-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f5f4f0; display: flex; align-items: center; gap: 8px; }
+.dd-item:last-child { border-bottom: none; }
+.dd-item:hover { background: #f5f4f0; }
+.dd-item.selected { background: #edf5ef; }
+.dd-check { width: 16px; height: 16px; border: 1.5px solid #bbb; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; }
+.dd-check.on { background: #4a7c59; border-color: #4a7c59; color: #fff; }
+.dd-cust { flex: 1; }
+.dd-cust .cn { font-weight: 500; color: #1a1a1a; }
+.dd-cust .cr { font-size: 11px; color: #aaa; }
+.dd-empty { padding: 16px 12px; color: #aaa; font-size: 13px; text-align: center; }
+
+.sel-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sel-tag { display: inline-flex; align-items: center; gap: 5px; background: #edf5ef; border: 1px solid #b5d4bc; border-radius: 20px; padding: 3px 10px 3px 12px; font-size: 12px; color: #2d6b3e; font-weight: 500; }
+.sel-tag .rm { cursor: pointer; color: #7ab88a; font-size: 15px; line-height: 1; }
+.sel-tag .rm:hover { color: #a52020; }
+.clear-all { font-size: 12px; color: #aaa; cursor: pointer; padding: 3px 8px; border: 1px solid #ddd; border-radius: 20px; background: #fff; }
+.clear-all:hover { color: #a52020; }
+
+.summary-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #e8e6e0; border-bottom: 1px solid #e8e6e0; }
+.kpi { background: #fff; padding: 14px 20px; }
+.kpi .label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.kpi .val { font-size: 22px; font-weight: 600; }
+.kpi .sub { font-size: 12px; color: #888; margin-top: 2px; }
+.delta.up { color: #1e7e34; }
+.delta.dn { color: #a52020; }
+
+.content { padding: 20px 24px; }
+.section-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+
+.table-wrap { background: #fff; border: 1px solid #e8e6e0; border-radius: 8px; overflow: hidden; margin-bottom: 24px; }
+table { width: 100%; border-collapse: collapse; }
+thead th { background: #f8f7f4; font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .4px; padding: 9px 14px; border-bottom: 1px solid #e8e6e0; text-align: left; white-space: nowrap; cursor: pointer; user-select: none; }
+thead th:hover { color: #4a7c59; }
+thead th.num, td.num { text-align: right; }
+thead th .si { display: inline-block; margin-left: 3px; opacity: .35; }
+thead th.sorted .si { opacity: 1; color: #4a7c59; }
+tbody tr { border-bottom: 1px solid #f0ede8; transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #faf9f6; }
+tbody td { padding: 9px 14px; font-size: 13px; }
+.cname a { color: #1a1a1a; text-decoration: none; font-weight: 500; }
+.cname a:hover { color: #4a7c59; text-decoration: underline; }
+.sub-name { font-size: 11px; color: #aaa; font-weight: 400; display: block; margin-top: 1px; }
+.ch-badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 3px; background: #f0ede8; color: #555; }
+.mini-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.mini-bar { height: 5px; border-radius: 3px; background: #e8e6e0; flex: 1; overflow: hidden; }
+.mini-bar-fill { height: 100%; border-radius: 3px; background: #4a7c59; }
+.tag { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.tag-warn { background: #fff3cd; color: #856404; }
+.tag-danger { background: #fde8e8; color: #a52020; }
+
+.detail-panel { display: none; background: #fff; border: 1px solid #e8e6e0; border-radius: 8px; margin-bottom: 24px; }
+.detail-panel.open { display: block; }
+.detail-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f0ede8; }
+.detail-header h2 { font-size: 17px; font-weight: 600; }
+.dmeta { font-size: 12px; color: #888; margin-top: 3px; }
+.close-btn { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; color: #666; flex-shrink: 0; }
+.close-btn:hover { background: #f5f4f0; }
+.detail-body { display: grid; grid-template-columns: 1fr 1fr; }
+.detail-col { padding: 16px 20px; }
+.detail-col:first-child { border-right: 1px solid #f0ede8; }
+.dkpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.dkpi { background: #f8f7f4; border-radius: 6px; padding: 10px 12px; }
+.dkpi .label { font-size: 11px; color: #999; margin-bottom: 3px; }
+.dkpi .val { font-size: 18px; font-weight: 600; }
+.mom-table th, .mom-table td { padding: 6px 10px; font-size: 12px; }
+.mom-table thead th { background: #f8f7f4; }
+.prod-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f0ede8; font-size: 12px; }
+.prod-row:last-child { border-bottom: none; }
+.prod-row .pname { color: #555; }
+.prod-row .pamt { font-weight: 500; }
+#mom-chart-wrap { position: relative; width: 100%; height: 180px; }
+
+.pagination { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-top: 1px solid #f0ede8; background: #faf9f6; }
+.page-btn { height: 28px; min-width: 28px; border: 1px solid #ddd; border-radius: 5px; background: #fff; font-size: 12px; cursor: pointer; color: #555; display: flex; align-items: center; justify-content: center; padding: 0 8px; }
+.page-btn:hover { background: #f0ede8; }
+.page-btn.active { background: #4a7c59; border-color: #4a7c59; color: #fff; }
+.page-btn:disabled { opacity: .4; cursor: default; }
+.page-info { font-size: 12px; color: #888; margin-left: auto; }
+
+.loading { text-align: center; padding: 60px 20px; color: #999; }
+.error { padding: 20px; color: #a52020; background: #fde8e8; border-radius: 8px; margin: 16px; font-size: 13px; }
+.no-data { text-align: center; padding: 30px; color: #aaa; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a class="back-btn" href="https://godandytsai.github.io/crm-app/">← CRM</a>
+  <span class="sep">|</span>
+  <h1>客戶銷售分析</h1>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <label>搜尋客戶全稱</label>
+    <input type="text" id="searchInput" placeholder="輸入關鍵字選取客戶…" autocomplete="off">
+    <div class="search-dropdown" id="searchDropdown"></div>
+  </div>
+  <div id="selTagsWrap" class="sel-tags"></div>
+  <div style="margin-left:auto;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+    <div>
+      <label>通路</label>
+      <select id="chFilter"><option value="">全部通路</option></select>
+    </div>
+    <div>
+      <label>業務員</label>
+      <select id="peFilter"><option value="">全部業務</option></select>
+    </div>
+    <div>
+      <label>期間（起）</label>
+      <select id="yearFrom" style="width:72px"><option value="">年</option></select>
+      <select id="moFrom" style="width:58px"><option value="">月</option></select>
+    </div>
+    <div>
+      <label>期間（迄）</label>
+      <select id="yearTo" style="width:72px"><option value="">年</option></select>
+      <select id="moTo" style="width:58px"><option value="">月</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="kpi"><div class="label">客戶總數</div><div class="val" id="kpiCust">—</div><div class="sub">活躍</div></div>
+  <div class="kpi"><div class="label">期間總銷售</div><div class="val" id="kpiTotal">—</div><div class="sub">NT$</div></div>
+  <div class="kpi"><div class="label">客均銷售</div><div class="val" id="kpiAvg">—</div><div class="sub">每客戶</div></div>
+  <div class="kpi"><div class="label">最後進貨</div><div class="val" id="kpiLastDate">—</div><div class="sub" id="kpiLastCust"></div></div>
+  <div class="kpi"><div class="label">未進貨 &gt;60天</div><div class="val" id="kpiDormant">—</div><div class="sub">客戶</div></div>
+</div>
+
+<div class="content">
+  <div id="detailPanel" class="detail-panel">
+    <div class="detail-header">
+      <div>
+        <h2 id="detailName">—</h2>
+        <div class="dmeta" id="detailMeta"></div>
+      </div>
+      <button class="close-btn" onclick="closeDetail()">關閉 ✕</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-col">
+        <div class="section-title">概覽</div>
+        <div class="dkpi-grid" id="detailKpis"></div>
+        <div class="section-title" style="margin-top:12px">月別銷售</div>
+        <div id="mom-chart-wrap"><canvas id="momChart" role="img" aria-label="月別銷售趨勢"></canvas></div>
+      </div>
+      <div class="detail-col">
+        <div class="section-title">商品結構 Top 8</div>
+        <div id="detailProds"></div>
+        <div class="section-title" style="margin-top:14px">MoM 明細</div>
+        <div style="overflow-x:auto">
+          <table class="mom-table" id="momTable">
+            <thead><tr><th>月份</th><th class="num">銷售額</th><th class="num">vs 上月</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">客戶列表</div>
+  <div class="table-wrap">
+    <div id="tableLoading" class="loading">載入資料中…</div>
+    <div id="tableError" class="error" style="display:none"></div>
+    <table id="mainTable" style="display:none">
+      <thead>
+        <tr>
+          <th data-col="custName">客戶全稱 <span class="si">↕</span></th>
+          <th data-col="reg">區域 / 連鎖 <span class="si">↕</span></th>
+          <th data-col="ch">通路 <span class="si">↕</span></th>
+          <th data-col="pe">業務員 <span class="si">↕</span></th>
+          <th data-col="total" class="num sorted">期間銷售 <span class="si">↓</span></th>
+          <th data-col="mom" class="num">MoM% <span class="si">↕</span></th>
+          <th data-col="lastDate" class="num">上次進貨 <span class="si">↕</span></th>
+          <th data-col="daysSince" class="num">距今 <span class="si">↕</span></th>
+          <th class="num">佔比</th>
+        </tr>
+      </thead>
+      <tbody id="mainTbody"></tbody>
+    </table>
+    <div class="pagination" id="pagination" style="display:none"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const DATA_URL = 'https://godandytsai.github.io/sales-dashboard/data.json';
+const SB_URL = 'https://trxmfvosyfnlidmyelzs.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyeG1mdm9zeWZubGlkbXllbHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTU5NDUsImV4cCI6MjA5Mzc5MTk0NX0.auFOS6ZtcmhsXMWBctFtRr-KnKmGDh4E5jhnk79Vbx0';
+const TODAY = new Date();
+
+let allRows = [];
+let custNameMap = {};   // reg -> 客戶全稱
+let allCustList = [];   // [{customer_name, reg}] 搜尋用
+let selectedNames = new Set();
+let custData = [];
+let sortCol = 'total', sortDir = -1;
+let currentPage = 1;
+const PAGE_SIZE = 30;
+let momChartInstance = null;
+
+async function loadCustomerNames() {
+  try {
+    let all = [], from = 0;
+    while (true) {
+      const res = await fetch(
+        `${SB_URL}/rest/v1/sales_order?select=customer_name,region&limit=1000&offset=${from}`,
+        { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+      );
+      if (!res.ok) break;
+      const batch = await res.json();
+      if (!batch.length) break;
+      all = all.concat(batch);
+      if (batch.length < 1000) break;
+      from += 1000;
+    }
+    // reg -> { name: count } 統計最常出現的客戶全稱
+    const regCount = {};
+    for (const r of all) {
+      if (!r.customer_name || !r.region) continue;
+      if (!regCount[r.region]) regCount[r.region] = {};
+      regCount[r.region][r.customer_name] = (regCount[r.region][r.customer_name] || 0) + 1;
+    }
+    for (const reg of Object.keys(regCount)) {
+      const top = Object.entries(regCount[reg]).sort((a,b)=>b[1]-a[1])[0];
+      custNameMap[reg] = top[0];
+    }
+    // 建全客戶清單（去重 customer_name，保留最後一個 reg）
+    const seen = new Set();
+    for (const r of all) {
+      if (!r.customer_name || !r.region || seen.has(r.customer_name)) continue;
+      seen.add(r.customer_name);
+      allCustList.push({ customer_name: r.customer_name, reg: r.region });
+    }
+    allCustList.sort((a,b) => a.customer_name.localeCompare(b.customer_name, 'zh-TW'));
+    console.log('客戶清單載入：' + allCustList.length + ' 筆');
+  } catch(e) {
+    console.warn('客戶名稱載入失敗：', e.message);
+  }
+}
+
+async function loadData() {
+  try {
+    await loadCustomerNames();
+    const res = await fetch(DATA_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    const fields = json.F;
+    allRows = json.R.map(r => {
+      const obj = {};
+      fields.forEach((f,i) => obj[f] = r[i]);
+      return obj;
+    }).filter(r => r.t === '出貨' && r.amt > 0);
+    initFilters();
+    render();
+    document.getElementById('tableLoading').style.display = 'none';
+    document.getElementById('mainTable').style.display = '';
+    document.getElementById('pagination').style.display = '';
+  } catch(e) {
+    document.getElementById('tableLoading').style.display = 'none';
+    const el = document.getElementById('tableError');
+    el.style.display = '';
+    el.textContent = '資料載入失敗：' + e.message;
+  }
+}
+
+function getFilters() {
+  return {
+    ch: document.getElementById('chFilter').value,
+    pe: document.getElementById('peFilter').value,
+    yf: +document.getElementById('yearFrom').value || 0,
+    mf: +document.getElementById('moFrom').value || 0,
+    yt: +document.getElementById('yearTo').value || 9999,
+    mt: +document.getElementById('moTo').value || 12,
+  };
+}
+
+function inRange(row, f) {
+  const y = row.y, m = row.mo;
+  return ((y>f.yf)||(y===f.yf&&m>=(f.mf||1))) && ((y<f.yt)||(y===f.yt&&m<=f.mt));
+}
+
+function filteredRows() {
+  const f = getFilters();
+  return allRows.filter(r =>
+    (!f.ch || r.ch === f.ch) &&
+    (!f.pe || r.pe === f.pe) &&
+    inRange(r, f)
+  );
+}
+
+function buildCustData(rows) {
+  const map = {};
+  for (const r of rows) {
+    const key = r.reg;
+    if (!map[key]) map[key] = {
+      reg: r.reg, custName: custNameMap[r.reg] || r.reg,
+      ch: r.ch, pes: new Set(), total: 0, byMonth: {}, lastDate: null, prods: {}
+    };
+    const d = map[key];
+    d.total += r.amt;
+    d.pes.add(r.pe);
+    const ym = r.y + '-' + String(r.mo).padStart(2,'0');
+    d.byMonth[ym] = (d.byMonth[ym] || 0) + r.amt;
+    const ds = r.y + '-' + String(r.mo).padStart(2,'0') + '-' + String(r.day).padStart(2,'0');
+    if (!d.lastDate || ds > d.lastDate) d.lastDate = ds;
+    const prod = r.ca + '/' + r.ma;
+    d.prods[prod] = (d.prods[prod] || 0) + r.amt;
+  }
+  return Object.values(map).map(d => {
+    const pes = [...d.pes].filter(p => p && p !== '總公司');
+    const months = Object.keys(d.byMonth).sort();
+    let mom = null;
+    if (months.length >= 2) {
+      const last = d.byMonth[months[months.length-1]];
+      const prev = d.byMonth[months[months.length-2]];
+      mom = prev > 0 ? ((last-prev)/prev*100) : null;
+    }
+    const daysSince = d.lastDate ? Math.max(0, Math.floor((TODAY-new Date(d.lastDate))/86400000)) : 9999;
+    return { ...d, pe: pes.join('、')||'總公司', mom, daysSince, months };
+  });
+}
+
+function applySelection(data) {
+  if (!selectedNames.size) return data;
+  // 找出被選中 customer_name 對應的所有 reg
+  const selRegs = new Set();
+  for (const item of allCustList) {
+    if (selectedNames.has(item.customer_name)) selRegs.add(item.reg);
+  }
+  // 也從 custNameMap 反查
+  for (const [reg, name] of Object.entries(custNameMap)) {
+    if (selectedNames.has(name)) selRegs.add(reg);
+  }
+  return data.filter(c => selRegs.has(c.reg));
+}
+
+function initFilters() {
+  const chs = [...new Set(allRows.map(r=>r.ch))].sort();
+  const pes = [...new Set(allRows.map(r=>r.pe))].filter(p=>p&&p!=='總公司').sort();
+  const years = [...new Set(allRows.map(r=>r.y))].sort();
+  const sel = (id, arr) => {
+    const s = document.getElementById(id);
+    arr.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; s.appendChild(o); });
+  };
+  sel('chFilter',chs); sel('peFilter',pes);
+  sel('yearFrom',years); sel('yearTo',years);
+  sel('moFrom',[1,2,3,4,5,6,7,8,9,10,11,12]);
+  sel('moTo',[1,2,3,4,5,6,7,8,9,10,11,12]);
+  document.getElementById('yearTo').value = years[years.length-1]||'';
+  document.getElementById('moTo').value = 12;
+}
+
+function fmt(n) { return 'NT$'+Math.round(n).toLocaleString(); }
+function fmtK(n) { return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed(0)+'K':Math.round(n)+''; }
+
+function render() {
+  let data = applySelection(buildCustData(filteredRows()));
+  data.sort((a,b) => {
+    let av=a[sortCol], bv=b[sortCol];
+    const nv = sortDir<0 ? -Infinity : Infinity;
+    if (av===null||av===undefined) av=nv;
+    if (bv===null||bv===undefined) bv=nv;
+    if (typeof av==='string'&&typeof bv==='string') return sortDir*av.localeCompare(bv,'zh-TW');
+    if (typeof av==='string') av=0;
+    if (typeof bv==='string') bv=0;
+    return sortDir*(av-bv);
+  });
+  custData = data;
+  currentPage = 1;
+
+  const total = custData.reduce((s,c)=>s+c.total,0);
+  const dormant = custData.filter(c=>c.daysSince>60).length;
+  const latest = custData.reduce((m,c)=>c.lastDate>(m?.lastDate||'')?c:m, null);
+  document.getElementById('kpiCust').textContent = custData.length;
+  document.getElementById('kpiTotal').textContent = 'NT$'+fmtK(total);
+  document.getElementById('kpiAvg').textContent = custData.length?'NT$'+fmtK(total/custData.length):'—';
+  document.getElementById('kpiLastDate').textContent = latest?.lastDate||'—';
+  document.getElementById('kpiLastCust').textContent = latest?.custName||'';
+  document.getElementById('kpiDormant').textContent = dormant;
+
+  renderTable(total);
+  renderPagination();
+}
+
+function renderTable(grandTotal) {
+  const start = (currentPage-1)*PAGE_SIZE;
+  const page = custData.slice(start, start+PAGE_SIZE);
+  const maxTotal = custData[0]?.total||1;
+  document.getElementById('mainTbody').innerHTML = page.map(c => {
+    const pct = (c.total/(grandTotal||1)*100).toFixed(1);
+    const barW = Math.round(c.total/maxTotal*100);
+    const momTag = c.mom===null?'<span style="color:#ccc">—</span>':
+      c.mom>0?`<span class="delta up">+${c.mom.toFixed(1)}%</span>`:
+      `<span class="delta dn">${c.mom.toFixed(1)}%</span>`;
+    const dayTag = c.daysSince>60?`<span class="tag tag-danger">${c.daysSince}天</span>`:
+      c.daysSince>30?`<span class="tag tag-warn">${c.daysSince}天</span>`:
+      `<span style="color:#888">${c.daysSince}天</span>`;
+    const safeReg = c.reg.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<tr>
+      <td class="cname"><a href="#" onclick="openDetail('${safeReg}');return false">${c.custName}${c.custName!==c.reg?`<span class="sub-name">${c.reg}</span>`:''}</a></td>
+      <td style="font-size:12px;color:#777">${c.reg}</td>
+      <td><span class="ch-badge">${c.ch}</span></td>
+      <td style="color:#666;font-size:12px">${c.pe}</td>
+      <td class="num" style="font-weight:500">${fmt(c.total)}</td>
+      <td class="num">${momTag}</td>
+      <td class="num" style="font-size:12px;color:#555">${c.lastDate||'—'}</td>
+      <td class="num">${dayTag}</td>
+      <td class="num"><div class="mini-bar-wrap"><div class="mini-bar"><div class="mini-bar-fill" style="width:${barW}%"></div></div><span style="font-size:11px;color:#888;min-width:36px;text-align:right">${pct}%</span></div></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="9" class="no-data">無符合資料</td></tr>';
+}
+
+function renderPagination() {
+  const total = custData.length;
+  const pages = Math.ceil(total/PAGE_SIZE);
+  const pg = document.getElementById('pagination');
+  if (pages<=1) { pg.innerHTML=`<span class="page-info">共 ${total} 筆</span>`; return; }
+  let html = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  for (let i=1;i<=pages;i++) {
+    if (i===1||i===pages||Math.abs(i-currentPage)<=2) html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+    else if (Math.abs(i-currentPage)===3) html+='<span style="color:#ccc;padding:0 4px">…</span>';
+  }
+  html+=`<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===pages?'disabled':''}>›</button>`;
+  html+=`<span class="page-info">第 ${currentPage}/${pages} 頁，共 ${total} 筆</span>`;
+  pg.innerHTML = html;
+}
+
+function goPage(p) {
+  const pages = Math.ceil(custData.length/PAGE_SIZE);
+  if (p<1||p>pages) return;
+  currentPage = p;
+  renderTable(custData.reduce((s,c)=>s+c.total,0));
+  renderPagination();
+}
+
+function openDetail(reg) {
+  const c = custData.find(x=>x.reg===reg);
+  if (!c) return;
+  document.getElementById('detailName').textContent = c.custName;
+  document.getElementById('detailMeta').innerHTML = `<span class="ch-badge">${c.ch}</span>&nbsp; ${c.reg}&nbsp; 業務：${c.pe}`;
+  const months = c.months;
+  const lastAmt = c.byMonth[months[months.length-1]]||0;
+  document.getElementById('detailKpis').innerHTML = `
+    <div class="dkpi"><div class="label">累計銷售</div><div class="val">${fmt(c.total)}</div></div>
+    <div class="dkpi"><div class="label">上次進貨</div><div class="val" style="font-size:14px">${c.lastDate||'—'}</div></div>
+    <div class="dkpi"><div class="label">距今天數</div><div class="val ${c.daysSince>60?'delta dn':''}">${c.daysSince}天</div></div>
+    <div class="dkpi"><div class="label">最後月銷售</div><div class="val" style="font-size:14px">${fmt(lastAmt)}</div></div>
+    <div class="dkpi"><div class="label">MoM</div><div class="val ${c.mom>0?'delta up':c.mom<0?'delta dn':''}" style="font-size:16px">${c.mom===null?'—':(c.mom>0?'+':'')+c.mom.toFixed(1)+'%'}</div></div>
+    <div class="dkpi"><div class="label">月份數</div><div class="val">${months.length}</div></div>`;
+  const prods = Object.entries(c.prods).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  document.getElementById('detailProds').innerHTML = prods.map(([k,v])=>
+    `<div class="prod-row"><span class="pname">${k}</span><span class="pamt">${fmt(v)}</span></div>`
+  ).join('')||'<div class="no-data">無資料</div>';
+  document.querySelector('#momTable tbody').innerHTML = months.map((m,i)=>{
+    const amt=c.byMonth[m], prev=i>0?c.byMonth[months[i-1]]:null;
+    const chg=prev>0?((amt-prev)/prev*100):null;
+    return `<tr><td>${m}</td><td class="num">${fmt(amt)}</td><td class="num">${chg===null?'—':`<span class="${chg>0?'delta up':'delta dn'}">${chg>0?'+':''}${chg.toFixed(1)}%</span>`}</td></tr>`;
+  }).reverse().join('');
+  if (momChartInstance){momChartInstance.destroy();momChartInstance=null;}
+  momChartInstance = new Chart(document.getElementById('momChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:months,datasets:[{data:months.map(m=>c.byMonth[m]||0),
+      backgroundColor:months.map((_,i)=>i===months.length-1?'#4a7c59':'#b8d4c0'),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'NT$'+Math.round(ctx.parsed.y).toLocaleString()}}},
+      scales:{x:{ticks:{font:{size:11},autoSkip:true,maxRotation:45},grid:{display:false}},
+        y:{ticks:{callback:v=>'NT$'+fmtK(v),font:{size:11}},grid:{color:'#f0ede8'}}}}
+  });
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('detailPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  if (momChartInstance){momChartInstance.destroy();momChartInstance=null;}
+}
+
+// ── 搜尋 autocomplete ──
+const searchInput = document.getElementById('searchInput');
+const searchDropdown = document.getElementById('searchDropdown');
+
+function renderDropdown(kw) {
+  if (!kw) { searchDropdown.classList.remove('open'); return; }
+  const kl = kw.toLowerCase();
+  const hits = allCustList.filter(c=>c.customer_name.toLowerCase().includes(kl)).slice(0,40);
+  if (!hits.length) {
+    searchDropdown.innerHTML = '<div class="dd-empty">找不到符合的客戶</div>';
+  } else {
+    const re = new RegExp('('+kl.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+    searchDropdown.innerHTML = hits.map(c => {
+      const on = selectedNames.has(c.customer_name);
+      const hl = c.customer_name.replace(re,'<mark style="background:#fff3cd;border-radius:2px">$1</mark>');
+      const safeName = c.customer_name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="dd-item${on?' selected':''}" onclick="toggleSelect('${safeName}')">
+        <div class="dd-check${on?' on':''}">${on?'✓':''}</div>
+        <div class="dd-cust"><div class="cn">${hl}</div><div class="cr">${c.reg}</div></div>
+      </div>`;
+    }).join('');
+  }
+  searchDropdown.classList.add('open');
+}
+
+function toggleSelect(name) {
+  if (selectedNames.has(name)) selectedNames.delete(name);
+  else selectedNames.add(name);
+  renderSelTags();
+  renderDropdown(searchInput.value.trim());
+  render();
+}
+
+function renderSelTags() {
+  const wrap = document.getElementById('selTagsWrap');
+  if (!selectedNames.size) { wrap.innerHTML=''; return; }
+  wrap.innerHTML = [...selectedNames].map(n=>{
+    const safe = n.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<span class="sel-tag">${n}<span class="rm" onclick="toggleSelect('${safe}')">×</span></span>`;
+  }).join('') + `<span class="clear-all" onclick="clearAll()">清除全部</span>`;
+}
+
+function clearAll() {
+  selectedNames.clear();
+  renderSelTags();
+  render();
+}
+
+searchInput.addEventListener('input', ()=>renderDropdown(searchInput.value.trim()));
+searchInput.addEventListener('focus', ()=>{ if(searchInput.value.trim()) renderDropdown(searchInput.value.trim()); });
+document.addEventListener('click', e=>{ if(!e.target.closest('.search-wrap')) searchDropdown.classList.remove('open'); });
+
+document.querySelectorAll('thead th[data-col]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const col=th.dataset.col;
+    if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=-1;}
+    document.querySelectorAll('thead th').forEach(t=>{t.classList.remove('sorted');t.querySelector('.si').textContent='↕';});
+    th.classList.add('sorted');
+    th.querySelector('.si').textContent=sortDir<0?'↓':'↑';
+    render();
+  });
+});
+
+['chFilter','peFilter','yearFrom','moFrom','yearTo','moTo'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', render);
+});
+
+loadData();
+</script>
+</body>
+</html>
