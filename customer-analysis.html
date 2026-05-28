@@ -18,14 +18,12 @@ body { font-family: -apple-system, 'PingFang TC', 'Helvetica Neue', sans-serif; 
 .toolbar { background: #fff; border-bottom: 1px solid #e8e6e0; padding: 10px 24px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .toolbar label { display: block; font-size: 11px; color: #999; margin-bottom: 4px; letter-spacing: .3px; }
 
-/* 通用 filter-select：帶有效筆數角標 */
 .filter-box { position: relative; }
 .filter-select { height: 32px; border: 1px solid #ddd; border-radius: 6px; padding: 0 28px 0 10px; font-size: 13px; background: #fff; outline: none; appearance: none; min-width: 130px; cursor: pointer; }
 .filter-select:focus { border-color: #4a7c59; }
 .filter-select option:disabled { color: #ccc; }
 .filter-arrow { position: absolute; right: 8px; bottom: 8px; pointer-events: none; font-size: 11px; color: #aaa; }
 
-/* 搜尋 */
 .search-wrap { position: relative; }
 .search-input { height: 32px; border: 1px solid #ddd; border-radius: 6px; padding: 0 10px; font-size: 13px; width: 220px; outline: none; }
 .search-input:focus { border-color: #4a7c59; }
@@ -71,7 +69,6 @@ body { font-family: -apple-system, 'PingFang TC', 'Helvetica Neue', sans-serif; 
 .dd-cust .cn { font-weight: 500; font-size: 13px; }
 .dd-empty { padding: 20px 12px; color: #aaa; font-size: 13px; text-align: center; }
 
-/* Selected tags */
 .sel-tags-wrap { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; max-width: 500px; }
 .sel-tag {
   display: inline-flex; align-items: center; gap: 4px;
@@ -88,7 +85,6 @@ body { font-family: -apple-system, 'PingFang TC', 'Helvetica Neue', sans-serif; 
 }
 .clear-all-btn:hover { color: #a52020; border-color: #f9a8a8; }
 
-/* KPI strip */
 .summary-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #e8e6e0; border-bottom: 1px solid #e8e6e0; }
 .kpi { background: #fff; padding: 14px 20px; }
 .kpi .label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
@@ -99,12 +95,11 @@ body { font-family: -apple-system, 'PingFang TC', 'Helvetica Neue', sans-serif; 
 
 .load-bar { background: #edf5ef; border-bottom: 1px solid #b5d4bc; padding: 6px 24px; font-size: 12px; color: #4a7c59; display: none; }
 
-/* Content */
 .content { padding: 20px 24px; }
 .section-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
 
-.table-wrap { background: #fff; border: 1px solid #e8e6e0; border-radius: 8px; overflow: hidden; margin-bottom: 24px; }
-table { width: 100%; border-collapse: collapse; }
+.table-wrap { background: #fff; border: 1px solid #e8e6e0; border-radius: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 24px; }
+table { width: 100%; border-collapse: collapse; min-width: 700px; }
 thead th {
   background: #f8f7f4; font-size: 11px; font-weight: 600; color: #888;
   text-transform: uppercase; letter-spacing: .4px; padding: 9px 14px;
@@ -129,7 +124,6 @@ tbody td { padding: 9px 14px; font-size: 13px; }
 .tag-warn { background: #fff3cd; color: #856404; }
 .tag-danger { background: #fde8e8; color: #a52020; }
 
-/* Detail panel */
 .detail-panel { display: none; background: #fff; border: 1px solid #e8e6e0; border-radius: 8px; margin-bottom: 24px; }
 .detail-panel.open { display: block; }
 .detail-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f0ede8; }
@@ -161,6 +155,22 @@ tbody td { padding: 9px 14px; font-size: 13px; }
 .loading { text-align: center; padding: 60px 20px; color: #999; }
 .error { padding: 16px 20px; color: #a52020; background: #fde8e8; font-size: 13px; }
 .no-data { text-align: center; padding: 40px; color: #aaa; font-size: 13px; }
+
+/* ── 手機板滑動支援 ── */
+@media (max-width: 768px) {
+  .top-bar { padding: 0 12px; }
+  .toolbar { padding: 8px 12px; gap: 8px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .toolbar > div { flex-shrink: 0; }
+  .summary-strip { grid-template-columns: repeat(3, 1fr); }
+  .kpi .val { font-size: 15px; }
+  .kpi { padding: 10px 12px; }
+  .content { padding: 12px; }
+  .search-input { width: 160px; }
+  .search-dropdown { width: 260px; }
+  .detail-body { grid-template-columns: 1fr; }
+  .detail-col:first-child { border-right: none; border-bottom: 1px solid #f0ede8; }
+  .sel-tags-wrap { max-width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -174,7 +184,6 @@ tbody td { padding: 9px 14px; font-size: 13px; }
 <div id="loadBar" class="load-bar">載入中…</div>
 
 <div class="toolbar">
-  <!-- 通路 -->
   <div class="filter-box">
     <label>通路</label>
     <select class="filter-select" id="chFilter" onchange="onFilterChange()">
@@ -182,7 +191,6 @@ tbody td { padding: 9px 14px; font-size: 13px; }
     </select>
     <span class="filter-arrow">▾</span>
   </div>
-  <!-- 業務員 -->
   <div class="filter-box">
     <label>業務員</label>
     <select class="filter-select" id="peFilter" onchange="onFilterChange()">
@@ -190,7 +198,6 @@ tbody td { padding: 9px 14px; font-size: 13px; }
     </select>
     <span class="filter-arrow">▾</span>
   </div>
-  <!-- 搜尋客戶（帶全選） -->
   <div>
     <label>搜尋客戶全稱</label>
     <div class="search-wrap">
@@ -207,10 +214,8 @@ tbody td { padding: 9px 14px; font-size: 13px; }
       </div>
     </div>
   </div>
-  <!-- 已選 tags -->
   <div id="selTagsWrap" class="sel-tags-wrap"></div>
-  <!-- 期間 -->
-  <div style="margin-left:auto;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+  <div style="margin-left:auto;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;flex-shrink:0">
     <div>
       <label>期間（起）</label>
       <select class="filter-select" id="yearFrom" style="min-width:72px" onchange="onFilterChange()"><option value="">年</option></select>
@@ -233,7 +238,6 @@ tbody td { padding: 9px 14px; font-size: 13px; }
 </div>
 
 <div class="content">
-  <!-- Detail panel -->
   <div id="detailPanel" class="detail-panel">
     <div class="detail-header">
       <div><h2 id="detailName">—</h2><div class="dmeta" id="detailMeta"></div></div>
@@ -290,17 +294,16 @@ const SB_URL  = 'https://trxmfvosyfnlidmyelzs.supabase.co';
 const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyeG1mdm9zeWZubGlkbXllbHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTU5NDUsImV4cCI6MjA5Mzc5MTk0NX0.auFOS6ZtcmhsXMWBctFtRr-KnKmGDh4E5jhnk79Vbx0';
 const TODAY = new Date();
 
-let prefixToName = {};  // "出貨_S120260102008" -> "正光藥局忠孝店"
-let allRows = [];       // 完整 data.json rows（含 custName）
+let prefixToName = {};
+let allRows = [];
 let selectedNames = new Set();
 let custData = [];
 let sortCol = 'total', sortDir = -1;
 let currentPage = 1;
 const PAGE_SIZE = 30;
 let momChartInstance = null;
-let currentKw = '';     // 搜尋框目前關鍵字
+let currentKw = '';
 
-// ── 載入 ──────────────────────────────────────────────
 function setBar(msg) {
   const el = document.getElementById('loadBar');
   el.style.display = msg ? '' : 'none';
@@ -327,7 +330,6 @@ async function loadCustomerMap() {
     from += 1000;
     setBar(`載入客戶對照… ${all.length} 筆`);
   }
-  console.log('對照表：' + Object.keys(prefixToName).length + ' 筆');
 }
 
 async function loadData() {
@@ -343,7 +345,7 @@ async function loadData() {
       F.forEach((f,i) => o[f] = r[i]);
       o.custName = prefixToName[o.id.replace(/_\d+$/, '')] || null;
       return o;
-    }).filter(r => r.t === '出貨' && r.amt > 0 && r.custName); // 只保留有客戶名稱的
+    }).filter(r => r.t === '出貨' && r.amt > 0 && r.custName);
 
     setBar('');
     initStaticFilters();
@@ -360,7 +362,6 @@ async function loadData() {
   }
 }
 
-// ── 篩選邏輯 ──────────────────────────────────────────
 function getF() {
   return {
     ch: document.getElementById('chFilter').value,
@@ -377,7 +378,6 @@ function inRange(r, f) {
          ((r.y<f.yt)||(r.y===f.yt&&r.mo<=f.mt));
 }
 
-// 只用 ch/pe/date 篩 row（不含客戶選取）
 function baseRows() {
   const f = getF();
   return allRows.filter(r =>
@@ -387,14 +387,12 @@ function baseRows() {
   );
 }
 
-// 有客戶選取時再過濾
 function filteredRows() {
   const base = baseRows();
   if (!selectedNames.size) return base;
   return base.filter(r => selectedNames.has(r.custName));
 }
 
-// ── 靜態 filter 初始化（年份、月份）──────────────────
 function initStaticFilters() {
   const years = [...new Set(allRows.map(r=>r.y))].sort();
   const sel = (id, arr) => {
@@ -408,18 +406,12 @@ function initStaticFilters() {
   document.getElementById('moTo').value = 12;
 }
 
-// ── 動態 filter（通路/業務員 只顯示有資料的選項）──────
 function updateDynamicFilters() {
   const f = getF();
-  // 所有在期間內的 row（不受 ch/pe 限制，讓選單互相過濾）
   const dateRows = allRows.filter(r => inRange(r, f));
-
-  // 通路：如果業務員有選，只顯示該業務員的通路
   const chBase = f.pe ? dateRows.filter(r=>r.pe===f.pe) : dateRows;
   const validChs = [...new Set(chBase.map(r=>r.ch))].sort();
   refreshSelect('chFilter', validChs, f.ch, '全部通路');
-
-  // 業務員：如果通路有選，只顯示該通路的業務員
   const peBase = f.ch ? dateRows.filter(r=>r.ch===f.ch) : dateRows;
   const validPes = [...new Set(peBase.map(r=>r.pe))].filter(p=>p&&p!=='總公司').sort();
   refreshSelect('peFilter', validPes, f.pe, '全部業務');
@@ -437,8 +429,6 @@ function refreshSelect(id, vals, current, allLabel) {
   });
 }
 
-// ── 客戶搜尋 dropdown ─────────────────────────────────
-// 從 baseRows() 取得可用客戶清單（依目前 ch/pe/date 篩選）
 function getAvailableCustomers(kw) {
   const base = baseRows();
   const custSet = {};
@@ -458,25 +448,17 @@ function renderDropdown() {
   const ddList = document.getElementById('ddList');
   const ddCount = document.getElementById('ddCount');
   const ddSelectAll = document.getElementById('ddSelectAll');
-
   ddCount.textContent = hits.length + ' 筆';
-
   if (!hits.length) {
     ddList.innerHTML = '<div class="dd-empty">無符合客戶</div>';
     ddSelectAll.innerHTML = '☐ 全選';
     return;
   }
-
   const allSelected = hits.every(c => selectedNames.has(c.name));
   const someSelected = hits.some(c => selectedNames.has(c.name));
-  if (allSelected) {
-    ddSelectAll.innerHTML = '<span class="dd-check on" style="display:inline-flex">✓</span> 全選';
-  } else if (someSelected) {
-    ddSelectAll.innerHTML = '<span class="dd-check partial" style="display:inline-flex">—</span> 全選';
-  } else {
-    ddSelectAll.innerHTML = '☐ 全選';
-  }
-
+  if (allSelected) ddSelectAll.innerHTML = '<span class="dd-check on" style="display:inline-flex">✓</span> 全選';
+  else if (someSelected) ddSelectAll.innerHTML = '<span class="dd-check partial" style="display:inline-flex">—</span> 全選';
+  else ddSelectAll.innerHTML = '☐ 全選';
   const re = kw ? new RegExp('('+kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi') : null;
   ddList.innerHTML = hits.map(c => {
     const on = selectedNames.has(c.name);
@@ -494,17 +476,13 @@ function toggleSelectAll() {
   const allSelected = hits.every(c => selectedNames.has(c.name));
   if (allSelected) hits.forEach(c => selectedNames.delete(c.name));
   else hits.forEach(c => selectedNames.add(c.name));
-  renderDropdown();
-  renderSelTags();
-  render();
+  renderDropdown(); renderSelTags(); render();
 }
 
 function toggleName(name) {
   if (selectedNames.has(name)) selectedNames.delete(name);
   else selectedNames.add(name);
-  renderDropdown();
-  renderSelTags();
-  render();
+  renderDropdown(); renderSelTags(); render();
 }
 
 function renderSelTags() {
@@ -516,34 +494,20 @@ function renderSelTags() {
   }).join('') + `<span class="clear-all-btn" onclick="clearAll()">清除全部</span>`;
 }
 
-function clearAll() {
-  selectedNames.clear();
-  renderSelTags();
-  renderDropdown();
-  render();
-}
+function clearAll() { selectedNames.clear(); renderSelTags(); renderDropdown(); render(); }
 
 function onFilterChange() {
-  // 清除已選客戶（通路/業務員改變，原選的客戶可能不在新範圍）
-  selectedNames.clear();
-  renderSelTags();
-  updateDynamicFilters();
-  renderDropdown();
-  render();
+  selectedNames.clear(); renderSelTags();
+  updateDynamicFilters(); renderDropdown(); render();
 }
 
-// ── 彙總 ──────────────────────────────────────────────
 function buildCustData(rows) {
   const map = {};
   for (const r of rows) {
     const key = r.custName;
-    if (!map[key]) map[key] = {
-      custName: r.custName, ch: r.ch,
-      pes: new Set(), total: 0, byMonth: {}, lastDate: null, prods: {}
-    };
+    if (!map[key]) map[key] = { custName: r.custName, ch: r.ch, pes: new Set(), total: 0, byMonth: {}, lastDate: null, prods: {} };
     const d = map[key];
-    d.total += r.amt;
-    d.pes.add(r.pe);
+    d.total += r.amt; d.pes.add(r.pe);
     const ym = r.y+'-'+String(r.mo).padStart(2,'0');
     d.byMonth[ym] = (d.byMonth[ym]||0) + r.amt;
     const ds = r.y+'-'+String(r.mo).padStart(2,'0')+'-'+String(r.day).padStart(2,'0');
@@ -565,7 +529,6 @@ function buildCustData(rows) {
   });
 }
 
-// ── render ────────────────────────────────────────────
 function fmt(n)  { return 'NT$'+Math.round(n).toLocaleString(); }
 function fmtK(n) { return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?(n/1000).toFixed(0)+'K':Math.round(n)+''; }
 
@@ -579,9 +542,7 @@ function render() {
     if (typeof av==='string'&&typeof bv==='string') return sortDir*av.localeCompare(bv,'zh-TW');
     return sortDir*(av-bv);
   });
-  custData = data;
-  currentPage = 1;
-
+  custData = data; currentPage = 1;
   const total = custData.reduce((s,c)=>s+c.total,0);
   const dormant = custData.filter(c=>c.daysSince>60).length;
   const latest = custData.reduce((m,c)=>(!m||c.lastDate>m.lastDate)?c:m, null);
@@ -591,9 +552,7 @@ function render() {
   document.getElementById('kpiLastDate').textContent = latest?.lastDate||'—';
   document.getElementById('kpiLastCust').textContent = latest?.custName||'';
   document.getElementById('kpiDormant').textContent = dormant;
-
-  renderTable(total);
-  renderPagination();
+  renderTable(total); renderPagination();
 }
 
 function renderTable(grandTotal) {
@@ -651,7 +610,6 @@ function goPage(p) {
   renderPagination();
 }
 
-// ── Detail panel ──────────────────────────────────────
 function openDetail(name) {
   const c = custData.find(x=>x.custName===name);
   if (!c) return;
@@ -701,7 +659,6 @@ function closeDetail() {
   if (momChartInstance){momChartInstance.destroy();momChartInstance=null;}
 }
 
-// ── 搜尋框事件 ────────────────────────────────────────
 const searchInput = document.getElementById('searchInput');
 const searchDropdown = document.getElementById('searchDropdown');
 
@@ -718,7 +675,6 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.search-wrap')) searchDropdown.classList.remove('open');
 });
 
-// ── 表格排序 ──────────────────────────────────────────
 document.querySelectorAll('thead th[data-col]').forEach(th=>{
   th.addEventListener('click', ()=>{
     const col=th.dataset.col;
