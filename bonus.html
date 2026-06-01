@@ -145,6 +145,8 @@ tr.mgmt-row td{color:var(--tx3);font-size:11px;background:var(--bg);}
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────
+var SUPABASE_URL='https://trxmfvosyfnlidmyelzs.supabase.co';
+var SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyeG1mdm9zeWZubGlkbXllbHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTU5NDUsImV4cCI6MjA5Mzc5MTk0NX0.auFOS6ZtcmhsXMWBctFtRr-KnKmGDh4E5jhnk79Vbx0';
 var REPO_USER='godandytsai', REPO_NAME='sales-dashboard';
 var DATA_URL='https://raw.githubusercontent.com/'+REPO_USER+'/'+REPO_NAME+'/main/data.json';
 
@@ -284,52 +286,60 @@ var curMain='phy', curQ=1, curPePhy='陳明祥', curQNet=1, curPeNet='雅蘋';
 
 // ── DATA LOAD ────────────────────────────────────────────────────
 async function loadData(){
-  function parseData(raw){
-    var F=raw.F||[], R=raw.R||[];
-    SALES=R.map(function(row){
-      var o={};
-      F.forEach(function(f,i){o[f]=row[i];});
-      return o;
+  $('loading').textContent='從 Supabase 載入資料...';
+  try{
+    // 從 Supabase 載入銷售資料（分批，每次1000筆）
+    var allRows=[];
+    var page=0, pageSize=1000, done=false;
+    while(!done){
+      var url=SUPABASE_URL+'/rest/v1/sales_order?select=id,order_type,year,month,day,sales_rep,region,channel,raw_channel,series,category,material,raw_material,amount&order=id&limit='+pageSize+'&offset='+(page*pageSize);
+      var resp=await fetch(url,{
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+      });
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+      var rows=await resp.json();
+      allRows=allRows.concat(rows);
+      $('loading').textContent='載入中... '+allRows.length+' 筆';
+      if(rows.length<pageSize) done=true;
+      else page++;
+    }
+
+    // 轉換成 bonus.html 需要的格式
+    SALES=allRows.map(function(r){
+      return {
+        t: r.order_type,
+        y: r.year,
+        mo: r.month,
+        day: r.day,
+        pe: r.sales_rep,
+        reg: r.region,
+        ch: r.channel,
+        rawCh: r.raw_channel,
+        se: r.series,
+        ca: r.category,
+        ma: r.material,
+        rawMa: r.raw_material,
+        amt: r.amount||0,
+      };
     });
-    QUOTA=raw.q||{};
-    QMETA=raw.qm||{};
-    $('data-date').textContent='更新：'+(QMETA.date||'—')+' | 檔案：'+(QMETA.file||'—');
+
+    // 從 GitHub 載入配額資料
+    try{
+      var qResp=await fetch(DATA_URL+'?t='+Date.now(),{signal:AbortSignal.timeout(8000)});
+      if(qResp.ok){
+        var raw=await qResp.json();
+        QUOTA=raw.q||{};
+        QMETA=raw.qm||{};
+      }
+    }catch(qe){ console.warn('配額載入失敗:',qe.message); }
+
+    $('data-date').textContent='銷售：'+allRows.length.toLocaleString()+' 筆 | 配額：'+(QMETA.file||'—');
     $('loading').style.display='none';
     render();
+  }catch(e){
+    $('loading').textContent='載入失敗：'+e.message;
+    console.error(e);
   }
-
-  // 方法1: raw.githubusercontent.com
-  try{
-    $('loading').textContent='載入資料中... (1/3)';
-    var resp=await fetch(DATA_URL+'?t='+Date.now(),{signal:AbortSignal.timeout(8000)});
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    return parseData(await resp.json());
-  }catch(e){ console.warn('方法1失敗:',e.message); }
-
-  // 方法2: GitHub API（公開，不需要 token）
-  try{
-    $('loading').textContent='載入資料中... (2/3)';
-    var apiUrl='https://api.github.com/repos/godandytsai/sales-dashboard/contents/data.json';
-    var resp2=await fetch(apiUrl,{
-      headers:{'Accept':'application/vnd.github.v3+json'},
-      signal:AbortSignal.timeout(10000)
-    });
-    if(!resp2.ok)throw new Error('API HTTP '+resp2.status);
-    var meta=await resp2.json();
-    var jsonStr=decodeURIComponent(escape(atob(meta.content.replace(/\n/g,''))));
-    return parseData(JSON.parse(jsonStr));
-  }catch(e){ console.warn('方法2失敗:',e.message); }
-
-  // 方法3: jsDelivr CDN
-  try{
-    $('loading').textContent='載入資料中... (3/3)';
-    var cdnUrl='https://cdn.jsdelivr.net/gh/godandytsai/sales-dashboard@main/data.json?t='+Date.now();
-    var resp3=await fetch(cdnUrl,{signal:AbortSignal.timeout(10000)});
-    if(!resp3.ok)throw new Error('CDN HTTP '+resp3.status);
-    return parseData(await resp3.json());
-  }catch(e){ console.warn('方法3失敗:',e.message); }
-
-  $('loading').textContent='資料載入失敗，請稍後再試';
 }
 
 // ── RENDER CONTROLLER ────────────────────────────────────────────
