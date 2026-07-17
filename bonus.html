@@ -400,13 +400,13 @@ function renderPhy(){
   });
 
   // Calculate per row
-  var rows=[]; var total_bonus=0; var total_quota=0; var total_net=0; var total_ship=0; var total_ret=0; var total_sup=0;
+  var rows=[]; var total_bonus=0; var total_quota=0; var total_net=0; var total_ship=0; var total_ret=0; var total_sup=0; var total_foregone=0;
   PHY_ROWS.forEach(function(row){
     var ma=row[0],ca=row[1],se=row[2],label=row[3];
     var key=ma+'|'+ca+'|'+se;
     var quota=Q[key]||0;
     var chData=S[key]||{};
-    var ship_t=0,ret_t=0,super_t=0,ch_bonus=0;
+    var ship_t=0,ret_t=0,super_t=0,ch_bonus=0,hyp_bonus=0;
     Object.keys(chData).forEach(function(chg){
       var v=chData[chg];
       var s=v.ship,r=v.ret,sup=Math.max(0,r-s*0.01);
@@ -419,9 +419,13 @@ function renderPhy(){
     Object.keys(chData).forEach(function(chg){
       var v=chData[chg],s=v.ship,r=v.ret,sup=Math.max(0,r-s*0.01);
       var cn=Math.max(0,s-r-sup),rate=rule[chg]||0;
+      if(rate) hyp_bonus+=cn*rate;
       if(qualified&&rate) ch_bonus+=cn*rate;
     });
     total_bonus+=ch_bonus;
+    // 若無門檻限制時的假設獎金（僅未達標的標記品項才有意義）
+    var foregone=(rule.threshold&&!qualified)?hyp_bonus:0;
+    total_foregone+=foregone;
     if(quota===0&&ship_t===0&&ret_t===0&&ch_bonus===0) return;
     // Build rate description
     var rateDesc='';
@@ -443,7 +447,7 @@ function renderPhy(){
       var unique=[]; rates.forEach(function(r){if(unique.indexOf(r)<0)unique.push(r);});
       rateDesc=unique.join(' / ');
     }
-    rows.push({label:label,threshold:rule.threshold,quota:quota,ship:ship_t,ret:ret_t,sup:super_t*2,net:net,achieve:achieve,qualified:qualified,bonus:ch_bonus,rateDesc:rateDesc});
+    rows.push({label:label,threshold:rule.threshold,quota:quota,ship:ship_t,ret:ret_t,sup:super_t*2,net:net,achieve:achieve,qualified:qualified,bonus:ch_bonus,rateDesc:rateDesc,foregone:foregone});
     total_quota+=quota; total_ship+=ship_t; total_ret+=ret_t; total_sup+=super_t*2; total_net+=net;
   });
 
@@ -456,7 +460,7 @@ function renderPhy(){
     '<div class="card"><div class="card-label">總達成率</div><div class="card-val '+achCls+'">'+fmtPct(achieve_total)+'</div></div>'+
     '<div class="card"><div class="card-label">季獎金合計</div><div class="card-val green">'+fmt(total_bonus)+'</div></div>';
 
-  $('phy-note').textContent=(pe==='張宏榜'&&q===1?'張宏榜 2/1 到職，Q1 配額與業績均採 2-3 月。':'')+' * 標記品項需達成率 ≥ 79.95% 才計算獎金。';
+  $('phy-note').textContent=(pe==='張宏榜'&&q===1?'張宏榜 2/1 到職，Q1 配額與業績均採 2-3 月。':'')+' * 標記品項需達成率 ≥ 79.95% 才計算獎金。'+(total_foregone>0?'（若取消門檻，未達標品項另可得 '+fmt(total_foregone)+'，僅供參考，未列入季獎金合計）':'');
 
   // Table
   $('phy-thead').innerHTML='<tr><th>品項</th><th>配額</th><th>出貨金額</th><th>出退金額</th><th>超退×2</th><th>淨出貨金額</th><th>達成率</th><th>抽成%</th><th>獎金</th></tr>';
@@ -471,6 +475,9 @@ function renderPhy(){
     }
     var lbl=r.threshold?r.label+' *':r.label;
     var bonCell=r.bonus>0?'<span class="bonus-amt">'+fmt(r.bonus)+'</span>':'<span class="zero">—</span>';
+    if(r.foregone>0){
+      bonCell+='<div style="font-size:10px;color:var(--tx3);margin-top:2px;white-space:nowrap">若無門檻：'+fmt(r.foregone)+'</div>';
+    }
     var rateCell=r.rateDesc?'<span style="color:var(--tx3);font-size:11px">'+r.rateDesc+'</span>':'<span class="zero">—</span>';
     tb+='<tr><td>'+lbl+'</td><td>'+(r.quota?fmt(r.quota):'<span class="zero">—</span>')+'</td>'
       +'<td>'+(r.ship?fmt(r.ship):'<span class="zero">—</span>')+'</td>'
